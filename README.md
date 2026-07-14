@@ -1,4 +1,26 @@
-# Metam Services (Python)
+# Metam Services Version 2.0
+
+This repository is the isolated Version 2.0 track. Version 1 remains in `vinodreddy1999/manufacturing-operations-platform` and can run at the same time.
+
+Version 2.0 first-batch additions:
+
+- Canonical, permission-aware `/workspace/dashboards/:dashboardKey` area
+- One-dashboard-at-a-time lazy loading
+- Shared client-scoped React Query keys
+- Cancellation and removal of previous-client scoped queries
+- Context-aware breadcrumbs
+- Version-specific Docker images, network, database, volumes, and ports
+- Measured architecture, dashboard, duplication, and performance documentation
+
+Side-by-side URLs after Docker Compose starts:
+
+- Version 1: `http://localhost:8080`
+- Version 2: `http://localhost:18080`
+- Version 2 API: `http://localhost:18000`
+
+See [Version 2 Deployment](docs/VERSION_2_DEPLOYMENT.md), [Information Architecture](docs/INFORMATION_ARCHITECTURE_TREE.md), and [Performance Baseline](docs/PERFORMANCE_BASELINE.md).
+
+## Existing backend foundation
 
 This repository is now a Python-only implementation of the Metam Services backend.
 
@@ -105,7 +127,7 @@ The business-facing administration workspace is organized into permission-aware 
 - `/admin/dashboards` - dashboard assignments and visibility
 - `/admin/data-scope` - client, region, plant, warehouse, department, and line scopes
 - `/admin/audit` - business-readable audit and compliance history
-- `/admin/business-impact` - delivered value and operational improvement
+- `/workspace/dashboards/business-impact` - delivered value and operational improvement
 - `/admin/recommendations` - opportunity pipeline and owner accountability
 - `/admin/settings` - general, currency, notification, integration, security, and branding preferences
 

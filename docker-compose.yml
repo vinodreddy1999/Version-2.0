@@ -1,4 +1,4 @@
-name: metam-services
+name: metam-services-v2
 
 services:
   postgres:
@@ -7,15 +7,15 @@ services:
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-metam}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-metam}
-      POSTGRES_DB: ${POSTGRES_DB:-metam}
+      POSTGRES_DB: ${POSTGRES_DB:-metam_v2}
     ports:
-      - "5432:5432"
+      - "${V2_POSTGRES_PORT:-55432}:5432"
     volumes:
-      - metam_postgres_data:/var/lib/postgresql/data
+      - metam_v2_postgres_data:/var/lib/postgresql/data
     networks:
-      - metam-network
+      - metam-v2-network
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-metam} -d ${POSTGRES_DB:-metam}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-metam} -d ${POSTGRES_DB:-metam_v2}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -24,14 +24,14 @@ services:
     image: redis:7-alpine
     restart: unless-stopped
     ports:
-      - "6379:6379"
+      - "${V2_REDIS_PORT:-56379}:6379"
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
       timeout: 5s
       retries: 5
     networks:
-      - metam-network
+      - metam-v2-network
 
   pgadmin:
     image: dpage/pgadmin4:8
@@ -40,25 +40,25 @@ services:
       PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL:-admin@metam.localhost.com}
       PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD:-ChangeMe123!}
     ports:
-      - "5050:80"
+      - "${V2_PGADMIN_PORT:-15050}:80"
     depends_on:
       postgres:
         condition: service_healthy
     volumes:
-      - metam_pgadmin_data:/var/lib/pgadmin
+      - metam_v2_pgadmin_data:/var/lib/pgadmin
     networks:
-      - metam-network
+      - metam-v2-network
 
   platform-api:
-    image: vinodreddy1999/metam-services-fullstack:latest
+    image: vinodreddy1999/metam-services-v2-fullstack:${METAM_V2_IMAGE_TAG:-2.0.0-beta.1}
     build: .
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000
     restart: unless-stopped
     environment:
-      DATABASE_URL: postgresql+psycopg2://${POSTGRES_USER:-metam}:${POSTGRES_PASSWORD:-metam}@postgres:5432/${POSTGRES_DB:-metam}
+      DATABASE_URL: postgresql+psycopg2://${POSTGRES_USER:-metam}:${POSTGRES_PASSWORD:-metam}@postgres:5432/${POSTGRES_DB:-metam_v2}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
     ports:
-      - "8000:8000"
+      - "${V2_API_PORT:-18000}:8000"
     depends_on:
       postgres:
         condition: service_healthy
@@ -70,17 +70,17 @@ services:
       timeout: 5s
       retries: 5
     networks:
-      - metam-network
+      - metam-v2-network
 
   fullstack-app:
-    image: vinodreddy1999/metam-services-fullstack:latest
+    image: vinodreddy1999/metam-services-v2-fullstack:${METAM_V2_IMAGE_TAG:-2.0.0-beta.1}
     build: .
     restart: unless-stopped
     environment:
-      DATABASE_URL: postgresql+psycopg2://${POSTGRES_USER:-metam}:${POSTGRES_PASSWORD:-metam}@postgres:5432/${POSTGRES_DB:-metam}
+      DATABASE_URL: postgresql+psycopg2://${POSTGRES_USER:-metam}:${POSTGRES_PASSWORD:-metam}@postgres:5432/${POSTGRES_DB:-metam_v2}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
     ports:
-      - "8080:8080"
+      - "${V2_APP_PORT:-18080}:8080"
     depends_on:
       postgres:
         condition: service_healthy
@@ -94,30 +94,30 @@ services:
       timeout: 5s
       retries: 5
     networks:
-      - metam-network
+      - metam-v2-network
 
   frontend:
-    image: vinodreddy1999/metam-services-frontend:latest
+    image: vinodreddy1999/metam-services-v2-frontend:${METAM_V2_IMAGE_TAG:-2.0.0-beta.1}
     build:
       context: ./frontend
       args:
-        VITE_API_BASE_URL: http://localhost:8000
+        VITE_API_BASE_URL: http://localhost:${V2_API_PORT:-18000}
     restart: unless-stopped
     ports:
-      - "8081:8080"
+      - "${V2_FRONTEND_PORT:-18081}:8080"
     depends_on:
       platform-api:
         condition: service_healthy
     networks:
-      - metam-network
+      - metam-v2-network
 
   worker:
-    image: vinodreddy1999/metam-services-fullstack:latest
+    image: vinodreddy1999/metam-services-v2-fullstack:${METAM_V2_IMAGE_TAG:-2.0.0-beta.1}
     build: .
     command: celery -A app.jobs.celery_app worker --loglevel=info
     restart: unless-stopped
     environment:
-      DATABASE_URL: postgresql+psycopg2://${POSTGRES_USER:-metam}:${POSTGRES_PASSWORD:-metam}@postgres:5432/${POSTGRES_DB:-metam}
+      DATABASE_URL: postgresql+psycopg2://${POSTGRES_USER:-metam}:${POSTGRES_PASSWORD:-metam}@postgres:5432/${POSTGRES_DB:-metam_v2}
       CELERY_BROKER_URL: redis://redis:6379/0
       CELERY_RESULT_BACKEND: redis://redis:6379/1
     depends_on:
@@ -126,30 +126,30 @@ services:
       redis:
         condition: service_healthy
     networks:
-      - metam-network
+      - metam-v2-network
 
   seed-enterprise-data:
-    image: vinodreddy1999/metam-services-fullstack:latest
+    image: vinodreddy1999/metam-services-v2-fullstack:${METAM_V2_IMAGE_TAG:-2.0.0-beta.1}
     build: .
     command: python scripts/seed_enterprise_data.py
     restart: "no"
     environment:
       BASE_URL: http://fullstack-app:8080
-      DATABASE_URL: postgresql+psycopg2://${POSTGRES_USER:-metam}:${POSTGRES_PASSWORD:-metam}@postgres:5432/${POSTGRES_DB:-metam}
+      DATABASE_URL: postgresql+psycopg2://${POSTGRES_USER:-metam}:${POSTGRES_PASSWORD:-metam}@postgres:5432/${POSTGRES_DB:-metam_v2}
     depends_on:
       fullstack-app:
         condition: service_healthy
     networks:
-      - metam-network
+      - metam-v2-network
 
   vinod-live-data-stream:
-    image: vinodreddy1999/metam-services-fullstack:latest
+    image: vinodreddy1999/metam-services-v2-fullstack:${METAM_V2_IMAGE_TAG:-2.0.0-beta.1}
     build: .
     command: python scripts/run_vinod_live_stream.py
     restart: unless-stopped
     environment:
       PYTHONPATH: /app
-      DATABASE_URL: postgresql+psycopg2://${POSTGRES_USER:-metam}:${POSTGRES_PASSWORD:-metam}@postgres:5432/${POSTGRES_DB:-metam}
+      DATABASE_URL: postgresql+psycopg2://${POSTGRES_USER:-metam}:${POSTGRES_PASSWORD:-metam}@postgres:5432/${POSTGRES_DB:-metam_v2}
       VINOD_LIVE_DURATION_HOURS: ${VINOD_LIVE_DURATION_HOURS:-48}
       VINOD_LIVE_INTERVAL_SECONDS: ${VINOD_LIVE_INTERVAL_SECONDS:-10}
       VINOD_LIVE_BATCH_SIZE: ${VINOD_LIVE_BATCH_SIZE:-50}
@@ -159,13 +159,13 @@ services:
       platform-api:
         condition: service_healthy
     networks:
-      - metam-network
+      - metam-v2-network
 
   nginx:
     image: nginx:1.27-alpine
     restart: unless-stopped
     ports:
-      - "80:80"
+      - "${V2_PROXY_PORT:-180}:80"
     volumes:
       - ./deploy/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
     depends_on:
@@ -177,12 +177,12 @@ services:
       timeout: 5s
       retries: 5
     networks:
-      - metam-network
+      - metam-v2-network
 
 volumes:
-  metam_postgres_data:
-  metam_pgadmin_data:
+  metam_v2_postgres_data:
+  metam_v2_pgadmin_data:
 
 networks:
-  metam-network:
+  metam-v2-network:
     driver: bridge
