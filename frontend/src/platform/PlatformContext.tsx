@@ -1,5 +1,7 @@
 import { createContext, useContext, useMemo, useState, type ReactNode } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 
+import { belongsToClient, isClientScopedQuery } from '../lib/queryKeys';
 import type { RuntimeUser } from '../types';
 import { initialPlatformState, initialWidgets, platformModules } from './data';
 import type { PlatformAuditLog, PlatformClient, PlatformState, PlatformUser, WidgetConfig } from './types';
@@ -43,6 +45,7 @@ function nextId(prefix: string, values: string[]) {
 }
 
 export function PlatformProvider({ runtimeUser, children }: { runtimeUser: RuntimeUser; children: ReactNode }) {
+  const queryClient = useQueryClient();
   const [state, setState] = useState<PlatformState>(loadState);
   const canSelectPlatform = runtimeUser.role === 'super_admin';
   const matchedUser = state.users.find((user) => user.email.toLowerCase() === runtimeUser.email.toLowerCase()) ?? state.users.find((user) => user.email === 'user@metam.local')!;
@@ -67,7 +70,14 @@ export function PlatformProvider({ runtimeUser, children }: { runtimeUser: Runti
     isPlatformContext: selectedClientId === null,
     currency: selectedClient?.currency ?? 'USD',
     canSelectPlatform,
-    selectClient: (clientId) => setSelectedClientId(canSelectPlatform ? clientId : matchedUser.clientId ?? state.clients[0].clientId),
+    selectClient: (clientId) => {
+      const nextClientId = canSelectPlatform ? clientId : matchedUser.clientId ?? state.clients[0].clientId;
+      if (nextClientId === selectedClientId) return;
+      const previousClientId = selectedClientId;
+      void queryClient.cancelQueries({ predicate: (query) => isClientScopedQuery(query.queryKey) });
+      queryClient.removeQueries({ predicate: (query) => belongsToClient(query.queryKey, previousClientId) });
+      setSelectedClientId(nextClientId);
+    },
     createClient: (input) => {
       const clientId = nextId('CLT', state.clients.map((client) => client.clientId));
       const client: PlatformClient = {
@@ -113,7 +123,7 @@ export function PlatformProvider({ runtimeUser, children }: { runtimeUser: Runti
     recordAudit: (input) => persist(addAudit(state, input)),
     updateWidget: (widgetId, payload) => persist({ ...state, widgets: state.widgets.map((widget) => widget.widgetId === widgetId ? { ...widget, ...payload } : widget) }),
     resetWidgets: () => persist({ ...state, widgets: initialWidgets }),
-  }), [state, runtimeUser, matchedUser, selectedClientId, selectedClient, canSelectPlatform]);
+  }), [state, runtimeUser, matchedUser, selectedClientId, selectedClient, canSelectPlatform, queryClient]);
 
   return <PlatformContext.Provider value={value}>{children}</PlatformContext.Provider>;
 }

@@ -56,13 +56,14 @@ export function canAccessModule({ user, selectedClient, platformUser, isPlatform
 
 export function canAccessPage(context: PermissionContext, path: string) {
   if (path.startsWith('/platform')) return context.user.role === 'super_admin' && Boolean(context.isPlatformContext);
+  if (path.startsWith('/workspace/dashboards') || path.startsWith('/dashboard')) return canAccessSection(context.user, 'dashboard');
   if (path.startsWith('/admin/performance')) return canAccessSection(context.user, 'admin');
   if (path.startsWith('/admin')) return canAccessSection(context.user, 'admin');
   if (path.startsWith('/data-hub')) return canAccessSection(context.user, 'data-hub');
   if (path.startsWith('/intelligence')) return canAccessSection(context.user, 'intelligence');
   const moduleEntry = Object.entries(routeModuleMap).find(([route]) => path === route || path.startsWith(`${route}/`));
   if (moduleEntry) return canAccessModule(context, moduleEntry[1]);
-  if (path === '/' || path.startsWith('/dashboard')) return canAccessSection(context.user, 'dashboard');
+  if (path === '/') return canAccessSection(context.user, 'dashboard');
   return true;
 }
 

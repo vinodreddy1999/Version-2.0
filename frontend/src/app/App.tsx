@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 
 import { LazyChunkBoundary } from '../components/LazyChunkBoundary';
+import { Breadcrumbs } from '../components/Breadcrumbs';
 import { LoadingState } from '../components/LoadingState';
 import { canAccessModule, canAccessPage, canAccessSection, firstAllowedPath } from '../lib/rbac';
 import { apiConfig, backend } from '../services/api';
@@ -38,14 +39,14 @@ const OperationsPage = lazy(() => import('../pages/OperationsPage').then((module
 const PlanningModulePage = lazy(() => import('../pages/PlanningModulePage').then((module) => ({ default: module.PlanningModulePage })));
 const ProductionModulePage = lazy(() => import('../pages/ProductionModulePage').then((module) => ({ default: module.ProductionModulePage })));
 const WarehouseModulePage = lazy(() => import('../pages/WarehouseModulePage').then((module) => ({ default: module.WarehouseModulePage })));
-const BusinessImpactDashboard = lazy(() => import('../pages/BusinessImpactDashboard').then((module) => ({ default: module.BusinessImpactDashboard })));
 const ImpactDrilldownPage = lazy(() => import('../pages/ImpactDrilldownPage').then((module) => ({ default: module.ImpactDrilldownPage })));
 const PlatformDashboardPage = lazy(() => import('../pages/PlatformDashboardPage').then((module) => ({ default: module.PlatformDashboardPage })));
 const PlatformModulePage = lazy(() => import('../pages/PlatformModulePage').then((module) => ({ default: module.PlatformModulePage })));
 const PerformancePage = lazy(() => import('../pages/PerformancePage').then((module) => ({ default: module.PerformancePage })));
+const UnifiedDashboardsPage = lazy(() => import('../pages/UnifiedDashboardsPage').then((module) => ({ default: module.UnifiedDashboardsPage })));
 
 const navItems = [
-  { to: '/', label: 'Dashboard', icon: LayoutDashboard, section: 'dashboard' as const },
+  { to: '/workspace/dashboards', label: 'Dashboards', icon: Gauge, section: 'dashboard' as const },
   { to: '/admin', label: 'Admin', icon: ShieldCheck, section: 'admin' as const },
   { to: '/data-hub', label: 'Data Hub', icon: DatabaseZap, section: 'data-hub' as const },
   { to: '/planning', label: 'Planning', moduleName: 'Planning', icon: Gauge, section: 'operations' as const },
@@ -66,6 +67,7 @@ const navItems = [
 
 const platformNavItems = [
   { to: '/platform', label: 'Platform', icon: LayoutDashboard },
+  { to: '/workspace/dashboards', label: 'Dashboards', icon: Gauge },
   { to: '/admin', label: 'Admin', icon: ShieldCheck },
   { to: '/data-hub', label: 'Data Hub', icon: DatabaseZap },
   { to: '/admin/performance', label: 'Performance', icon: Activity },
@@ -227,7 +229,7 @@ function AuthenticatedApp({ user, onLogout }: { user: RuntimeUser; onLogout: () 
             <>
               <div className="min-w-0 flex-1">
                 <p className="text-sm font-semibold uppercase tracking-[0.18em] text-cyan-200">METAM</p>
-                <p className="text-xs text-slate-400">Services</p>
+                <p className="text-xs text-slate-400">Services · Version 2.0</p>
               </div>
               <button
                 type="button"
@@ -348,10 +350,12 @@ function AuthenticatedApp({ user, onLogout }: { user: RuntimeUser; onLogout: () 
         </header>
 
         <main className="mx-auto w-full max-w-[1920px] px-4 py-6 sm:px-6 2xl:px-8">
+          <Breadcrumbs />
+          <div key={selectedClientId ?? 'platform'}>
           <LazyChunkBoundary label="Workspace view">
             <Suspense fallback={<LoadingState label="Loading workspace view" />}>
               <Routes>
-              <Route path="/" element={isPlatformContext ? <PlatformDashboardPage /> : <DashboardPage user={user} />} />
+              <Route path="/" element={isPlatformContext ? <PlatformDashboardPage /> : <Navigate to="/workspace/dashboards/executive" replace />} />
               <Route path="/platform" element={<PlatformOnly user={user} fallbackPath={allowedFallbackPath}>{isPlatformContext ? <PlatformDashboardPage /> : <DashboardPage user={user} />}</PlatformOnly>} />
               <Route path="/platform/modules/:moduleName" element={<PlatformOnly user={user} fallbackPath={allowedFallbackPath}><PlatformModulePage /></PlatformOnly>} />
               <Route path="/platform/widgets" element={<Navigate to="/platform?workspace=modules" replace />} />
@@ -361,8 +365,10 @@ function AuthenticatedApp({ user, onLogout }: { user: RuntimeUser; onLogout: () 
               <Route path="/admin/clients/:clientId/health" element={<Navigate to="/platform?workspace=clients" replace />} />
               <Route path="/admin/users" element={<Navigate to="/platform?workspace=users" replace />} />
               <Route path="/admin/users/create" element={<Navigate to="/platform?workspace=users" replace />} />
-              <Route path="/dashboard/business-impact" element={<ModuleRoute user={user} moduleName="Reports & Analytics" fallbackPath={allowedFallbackPath}><BusinessImpactDashboard /></ModuleRoute>} />
-              <Route path="/dashboard/:focus" element={<DashboardPage user={user} />} />
+              <Route path="/workspace/dashboards" element={<UnifiedDashboardsPage user={user} />} />
+              <Route path="/workspace/dashboards/:dashboardKey" element={<UnifiedDashboardsPage user={user} />} />
+              <Route path="/dashboard/business-impact" element={<Navigate to="/workspace/dashboards/business-impact" replace />} />
+              <Route path="/dashboard/:focus" element={<Navigate to="/workspace/dashboards/executive" replace />} />
               <Route path="/admin" element={<ProtectedRoute user={user} section="admin" fallbackPath={allowedFallbackPath}><Navigate to="/admin/company" replace /></ProtectedRoute>} />
               <Route path="/admin/company" element={<ProtectedRoute user={user} section="admin" fallbackPath={allowedFallbackPath}><AdminCenterPage section="company" user={user} /></ProtectedRoute>} />
               <Route path="/admin/roles" element={<ProtectedRoute user={user} section="admin" fallbackPath={allowedFallbackPath}><AdminCenterPage section="roles" user={user} /></ProtectedRoute>} />
@@ -389,12 +395,13 @@ function AuthenticatedApp({ user, onLogout }: { user: RuntimeUser; onLogout: () 
               <Route path="/compliance" element={<ModuleRoute user={user} moduleName="Compliance" fallbackPath={allowedFallbackPath}><ModuleWorkspacePage moduleKey="compliance" user={user} /></ModuleRoute>} />
               <Route path="/customer-portal" element={<ModuleRoute user={user} moduleName="Customer Portal" fallbackPath={allowedFallbackPath}><ModuleWorkspacePage moduleKey="customer-portal" user={user} /></ModuleRoute>} />
               <Route path="/supplier-portal" element={<ModuleRoute user={user} moduleName="Supplier Portal" fallbackPath={allowedFallbackPath}><ModuleWorkspacePage moduleKey="supplier-portal" user={user} /></ModuleRoute>} />
-              <Route path="/reports" element={<Navigate to="/dashboard/business-impact" replace />} />
+              <Route path="/reports" element={<Navigate to="/workspace/dashboards/business-impact" replace />} />
               <Route path="/documents" element={<ModuleRoute user={user} moduleName="Document Management" fallbackPath={allowedFallbackPath}><ModuleWorkspacePage moduleKey="documents" user={user} /></ModuleRoute>} />
               <Route path="/impact/:module/:metric" element={<ProtectedRoute user={user} section="operations" fallbackPath={allowedFallbackPath}><ImpactDrilldownPage /></ProtectedRoute>} />
               </Routes>
             </Suspense>
           </LazyChunkBoundary>
+          </div>
         </main>
       </div>
     </div>

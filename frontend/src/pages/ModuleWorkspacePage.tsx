@@ -11,7 +11,9 @@ import { Panel } from '../components/Panel';
 import { StatCard } from '../components/StatCard';
 import { StatusBadge } from '../components/StatusBadge';
 import { getModuleDefinition } from '../data/phase1';
+import { queryKeys } from '../lib/queryKeys';
 import { canWriteOperationalData } from '../lib/rbac';
+import { usePlatform } from '../platform/PlatformContext';
 import { backend } from '../services/api';
 import type { ModuleRecord, RuntimeUser } from '../types';
 
@@ -49,6 +51,7 @@ function generatedRecordCode(moduleKey: string, name: string) {
 
 export function ModuleWorkspacePage({ moduleKey, user }: { moduleKey: string; user: RuntimeUser }) {
   const queryClient = useQueryClient();
+  const { selectedClientId } = usePlatform();
   const definition = getModuleDefinition(moduleKey);
   const Icon = definition.icon;
   const canWrite = canWriteOperationalData(user);
@@ -61,7 +64,7 @@ export function ModuleWorkspacePage({ moduleKey, user }: { moduleKey: string; us
   });
 
   const records = useQuery({
-    queryKey: ['runtime-records', moduleKey],
+    queryKey: queryKeys.module.records(selectedClientId, moduleKey),
     queryFn: () => backend.records(moduleKey),
   });
 
@@ -69,24 +72,24 @@ export function ModuleWorkspacePage({ moduleKey, user }: { moduleKey: string; us
     mutationFn: backend.createRecord,
     onSuccess: () => {
       setDraft({ code: '', name: '', status: 'Open', owner: user.role.replace('_', ' '), quantity: 0 });
-      queryClient.invalidateQueries({ queryKey: ['runtime-records', moduleKey] });
-      queryClient.invalidateQueries({ queryKey: ['runtime-analytics'] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.module.records(selectedClientId, moduleKey) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.dashboard.analytics(selectedClientId) });
     },
   });
 
   const updateRecord = useMutation({
     mutationFn: ({ id, payload }: { id: string; payload: Partial<Omit<ModuleRecord, 'id' | 'created_at'>> }) => backend.updateRecord(id, payload),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['runtime-records', moduleKey] });
-      queryClient.invalidateQueries({ queryKey: ['runtime-analytics'] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.module.records(selectedClientId, moduleKey) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.dashboard.analytics(selectedClientId) });
     },
   });
 
   const deleteRecord = useMutation({
     mutationFn: backend.deleteRecord,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['runtime-records', moduleKey] });
-      queryClient.invalidateQueries({ queryKey: ['runtime-analytics'] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.module.records(selectedClientId, moduleKey) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.dashboard.analytics(selectedClientId) });
     },
   });
 

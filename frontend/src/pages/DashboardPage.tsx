@@ -11,6 +11,7 @@ import { Panel } from '../components/Panel';
 import { StatCard } from '../components/StatCard';
 import { StatusBadge } from '../components/StatusBadge';
 import { formatCurrency, formatNumber, toTitle } from '../lib/format';
+import { queryKeys } from '../lib/queryKeys';
 import { canAccessModule, canAccessPage, canAccessSection } from '../lib/rbac';
 import { backend } from '../services/api';
 import type { ModuleRecord, RuntimeUser } from '../types';
@@ -41,8 +42,8 @@ function moduleRoute(moduleKey: string) {
     'documents',
   ]);
   const routeMap: Record<string, string> = {
-    reporting: '/dashboard/business-impact',
-    reports: '/dashboard/business-impact',
+    reporting: '/workspace/dashboards/business-impact',
+    reports: '/workspace/dashboards/business-impact',
     integrations: '/data-hub',
     mobile: '/operations',
     ai_copilot: '/intelligence',
@@ -54,7 +55,7 @@ function moduleRoute(moduleKey: string) {
 
 export function DashboardPage({ user }: { user: RuntimeUser }) {
   const navigate = useNavigate();
-  const { currency, selectedClient, platformUser, isPlatformContext } = usePlatform();
+  const { currency, selectedClientId, selectedClient, platformUser, isPlatformContext } = usePlatform();
   const permissionContext = { user, selectedClient, platformUser, isPlatformContext };
   const canViewAdmin = canAccessSection(user, 'admin');
   const canViewDataHub = canAccessSection(user, 'data-hub');
@@ -65,12 +66,12 @@ export function DashboardPage({ user }: { user: RuntimeUser }) {
   const canViewQuality = canAccessModule(permissionContext, 'Quality');
   const canViewProcurement = canAccessModule(permissionContext, 'Procurement');
 
-  const admin = useQuery({ queryKey: ['admin-dashboard'], queryFn: backend.adminDashboard, enabled: canViewAdmin });
-  const inventory = useQuery({ queryKey: ['inventory-dashboard'], queryFn: backend.inventoryDashboard, enabled: canViewInventory });
-  const analytics = useQuery({ queryKey: ['runtime-analytics'], queryFn: backend.analytics, enabled: canViewOperations });
-  const systems = useQuery({ queryKey: ['connected-systems'], queryFn: backend.connectedSystems, enabled: canViewDataHub });
-  const uploads = useQuery({ queryKey: ['data-hub-uploads'], queryFn: backend.uploads, enabled: canViewDataHub });
-  const records = useQuery({ queryKey: ['runtime-records'], queryFn: () => backend.records(), enabled: canViewOperations });
+  const admin = useQuery({ queryKey: queryKeys.dashboard.admin(selectedClientId), queryFn: backend.adminDashboard, enabled: canViewAdmin });
+  const inventory = useQuery({ queryKey: queryKeys.dashboard.inventory(selectedClientId), queryFn: backend.inventoryDashboard, enabled: canViewInventory });
+  const analytics = useQuery({ queryKey: queryKeys.dashboard.analytics(selectedClientId), queryFn: backend.analytics, enabled: canViewOperations });
+  const systems = useQuery({ queryKey: queryKeys.dashboard.systems(selectedClientId), queryFn: backend.connectedSystems, enabled: canViewDataHub });
+  const uploads = useQuery({ queryKey: queryKeys.dashboard.uploads(selectedClientId), queryFn: backend.uploads, enabled: canViewDataHub });
+  const records = useQuery({ queryKey: queryKeys.dashboard.records(selectedClientId), queryFn: () => backend.records(), enabled: canViewOperations });
 
   const activeQueries = [
     canViewAdmin ? admin : null,
