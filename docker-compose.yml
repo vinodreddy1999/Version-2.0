@@ -57,7 +57,7 @@ services:
     environment:
       DATABASE_URL: postgresql+psycopg2://${POSTGRES_USER:-metam}:${POSTGRES_PASSWORD:-metam}@postgres:5432/${POSTGRES_DB:-metam_v2}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
-      ENABLE_PUBLIC_DEMO: ${ENABLE_PUBLIC_DEMO:-true}
+      ENABLE_PUBLIC_DEMO: ${ENABLE_PUBLIC_DEMO:-false}
       PUBLIC_DEMO_TOKEN_MINUTES: ${PUBLIC_DEMO_TOKEN_MINUTES:-120}
     ports:
       - "${V2_API_PORT:-18000}:8000"
@@ -81,7 +81,7 @@ services:
     environment:
       DATABASE_URL: postgresql+psycopg2://${POSTGRES_USER:-metam}:${POSTGRES_PASSWORD:-metam}@postgres:5432/${POSTGRES_DB:-metam_v2}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
-      ENABLE_PUBLIC_DEMO: ${ENABLE_PUBLIC_DEMO:-true}
+      ENABLE_PUBLIC_DEMO: ${ENABLE_PUBLIC_DEMO:-false}
       PUBLIC_DEMO_TOKEN_MINUTES: ${PUBLIC_DEMO_TOKEN_MINUTES:-120}
     ports:
       - "${V2_APP_PORT:-18080}:8080"
