@@ -81,14 +81,15 @@ export function DashboardPage({ user }: { user: RuntimeUser }) {
     canViewDataHub ? uploads : null,
     canViewOperations ? records : null,
   ].filter(Boolean);
-  const isLoading = activeQueries.some((query) => query?.isLoading);
+  const hasResolvedData = activeQueries.some((query) => query?.data !== undefined);
+  const isWaitingForFirstResult = !hasResolvedData && activeQueries.some((query) => query?.isLoading);
   const firstError = activeQueries.map((query) => query?.error).find(Boolean);
 
-  if (isLoading) {
+  if (isWaitingForFirstResult) {
     return <LoadingState label="Loading backend dashboard data" />;
   }
 
-  if (firstError) {
+  if (!hasResolvedData && firstError) {
     return <ErrorState title="Dashboard data unavailable" error={firstError} />;
   }
 

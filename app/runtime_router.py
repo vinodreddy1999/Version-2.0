@@ -6,7 +6,7 @@ from uuid import uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from jose import JWTError, jwt
-from sqlalchemy import inspect, text
+from sqlalchemy import func, inspect, text
 from sqlalchemy.orm import Session
 
 from .database import engine, get_db
@@ -562,21 +562,43 @@ def analytics_summary(_: User = Depends(current_user), db: Session = Depends(get
     if not has_override_scope(actor):
         record_query = record_query.filter(ModuleRecord.company_id == actor.company_id)
         user_query = user_query.filter(User.company_id == actor.company_id)
-    records = record_query.all()
-    inventory = [record for record in records if record.module_key == "inventory"]
     active_users = user_query.filter(User.is_active.is_(True)).count()
     disabled_users = user_query.filter(User.is_active.is_(False)).count()
-    total_quantity = sum(record.quantity or 0 for record in inventory)
-    low_stock = [record for record in inventory if (record.quantity or 0) <= float((record.payload or {}).get("reorder_level", 0))]
-    by_module: dict[str, int] = {}
-    by_company: dict[str, int] = {}
-    inventory_by_company: dict[str, float] = {}
-    for record in records:
-        by_module[record.module_key] = by_module.get(record.module_key, 0) + 1
-        company_id = record.company_id or "unassigned"
-        by_company[company_id] = by_company.get(company_id, 0) + 1
-        if record.module_key == "inventory":
-            inventory_by_company[company_id] = inventory_by_company.get(company_id, 0) + (record.quantity or 0)
+    by_module = {
+        module_key: count
+        for module_key, count in record_query.with_entities(
+            ModuleRecord.module_key,
+            func.count(ModuleRecord.id),
+        ).group_by(ModuleRecord.module_key).all()
+    }
+    by_company = {
+        company_id or "unassigned": count
+        for company_id, count in record_query.with_entities(
+            ModuleRecord.company_id,
+            func.count(ModuleRecord.id),
+        ).group_by(ModuleRecord.company_id).all()
+    }
+    inventory_query = record_query.filter(ModuleRecord.module_key == "inventory")
+    inventory_by_company = {
+        company_id or "unassigned": float(quantity or 0)
+        for company_id, quantity in inventory_query.with_entities(
+            ModuleRecord.company_id,
+            func.sum(ModuleRecord.quantity),
+        ).group_by(ModuleRecord.company_id).all()
+    }
+    total_quantity = sum(inventory_by_company.values())
+    low_stock_detail_limit = 20
+    reorder_level = func.coalesce(ModuleRecord.payload["reorder_level"].as_float(), 0.0)
+    low_stock_query = inventory_query.filter(
+        func.coalesce(ModuleRecord.quantity, 0.0) <= reorder_level
+    )
+    low_stock_count = low_stock_query.count()
+    low_stock_items = [
+        serialize_record(record)
+        for record in low_stock_query.order_by(ModuleRecord.created_at.desc())
+        .limit(low_stock_detail_limit)
+        .all()
+    ]
     return runtime_result(
         "analytics_summary",
         "Live database analytics for visualization.",
@@ -587,8 +609,10 @@ def analytics_summary(_: User = Depends(current_user), db: Session = Depends(get
             "company_record_counts": by_company,
             "inventory_quantity_by_company": inventory_by_company,
             "inventory_total_quantity": total_quantity,
-            "inventory_low_stock_count": len(low_stock),
-            "inventory_low_stock_items": [serialize_record(record) for record in low_stock],
+            "inventory_low_stock_count": low_stock_count,
+            "inventory_low_stock_items": low_stock_items,
+            "inventory_low_stock_detail_limit": low_stock_detail_limit,
+            "inventory_low_stock_items_truncated": low_stock_count > len(low_stock_items),
         },
     )
 

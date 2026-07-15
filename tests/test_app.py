@@ -1069,6 +1069,8 @@ def test_runtime_login_users_records_analytics_and_audit():
     analytics = client.get("/runtime/analytics/summary", headers=headers)
     assert analytics.status_code == 200
     assert "inventory_total_quantity" in analytics.json()["data"]
+    assert len(analytics.json()["data"]["inventory_low_stock_items"]) <= 20
+    assert analytics.json()["data"]["inventory_low_stock_detail_limit"] == 20
 
     audit = client.get("/runtime/audit-logs", headers=headers)
     assert audit.status_code == 200

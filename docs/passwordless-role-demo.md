@@ -8,7 +8,7 @@ This mode lets reviewers document the real Version 2 navigation, unified dashboa
 
 - Local application: `http://localhost:18080`
 - Local API: `http://localhost:18000`
-- Docker images: `vinodreddy1999/metam-services-v2-fullstack:2.0.0-beta.2` and `vinodreddy1999/metam-services-v2-frontend:2.0.0-beta.2`
+- Docker images: `vinodreddy1999/metam-services-v2-fullstack:2.0.0-beta.3` and `vinodreddy1999/metam-services-v2-frontend:2.0.0-beta.3`
 
 Open the application, choose **Passwordless role preview**, and select a role. Use **Switch role** in the header to return to the role list.
 
