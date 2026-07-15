@@ -60,25 +60,27 @@ export function DashboardPage({ user }: { user: RuntimeUser }) {
   const canViewAdmin = canAccessSection(user, 'admin');
   const canViewDataHub = canAccessSection(user, 'data-hub');
   const canViewOperations = canAccessSection(user, 'operations');
+  const canReadAdminData = canViewAdmin && ['super_admin', 'account_owner', 'admin'].includes(user.role);
+  const canReadDataHubData = canViewDataHub && ['super_admin', 'account_owner', 'admin'].includes(user.role);
   const canViewInventory = canAccessModule(permissionContext, 'Inventory');
   const canViewProduction = canAccessModule(permissionContext, 'Production');
   const canViewMaintenance = canAccessModule(permissionContext, 'Maintenance');
   const canViewQuality = canAccessModule(permissionContext, 'Quality');
   const canViewProcurement = canAccessModule(permissionContext, 'Procurement');
 
-  const admin = useQuery({ queryKey: queryKeys.dashboard.admin(selectedClientId), queryFn: backend.adminDashboard, enabled: canViewAdmin });
+  const admin = useQuery({ queryKey: queryKeys.dashboard.admin(selectedClientId), queryFn: backend.adminDashboard, enabled: canReadAdminData });
   const inventory = useQuery({ queryKey: queryKeys.dashboard.inventory(selectedClientId), queryFn: backend.inventoryDashboard, enabled: canViewInventory });
   const analytics = useQuery({ queryKey: queryKeys.dashboard.analytics(selectedClientId), queryFn: backend.analytics, enabled: canViewOperations });
-  const systems = useQuery({ queryKey: queryKeys.dashboard.systems(selectedClientId), queryFn: backend.connectedSystems, enabled: canViewDataHub });
-  const uploads = useQuery({ queryKey: queryKeys.dashboard.uploads(selectedClientId), queryFn: backend.uploads, enabled: canViewDataHub });
+  const systems = useQuery({ queryKey: queryKeys.dashboard.systems(selectedClientId), queryFn: backend.connectedSystems, enabled: canReadDataHubData });
+  const uploads = useQuery({ queryKey: queryKeys.dashboard.uploads(selectedClientId), queryFn: backend.uploads, enabled: canReadDataHubData });
   const records = useQuery({ queryKey: queryKeys.dashboard.records(selectedClientId), queryFn: () => backend.records(), enabled: canViewOperations });
 
   const activeQueries = [
-    canViewAdmin ? admin : null,
+    canReadAdminData ? admin : null,
     canViewInventory ? inventory : null,
     canViewOperations ? analytics : null,
-    canViewDataHub ? systems : null,
-    canViewDataHub ? uploads : null,
+    canReadDataHubData ? systems : null,
+    canReadDataHubData ? uploads : null,
     canViewOperations ? records : null,
   ].filter(Boolean);
   const hasResolvedData = activeQueries.some((query) => query?.data !== undefined);
@@ -111,7 +113,7 @@ export function DashboardPage({ user }: { user: RuntimeUser }) {
       helper: `${formatNumber(admin.data?.user_count)} total users`,
       accent: 'emerald' as const,
       route: '/admin',
-      visible: canViewAdmin,
+      visible: canReadAdminData,
     },
     {
       label: 'Backend Records',
@@ -135,7 +137,7 @@ export function DashboardPage({ user }: { user: RuntimeUser }) {
       helper: 'Waiting for action',
       accent: 'violet' as const,
       route: '/admin',
-      visible: canViewAdmin,
+      visible: canReadAdminData,
     },
     {
       label: 'Active Integrations',
@@ -143,7 +145,7 @@ export function DashboardPage({ user }: { user: RuntimeUser }) {
       helper: 'ERP, files, APIs, SFTP',
       accent: 'blue' as const,
       route: '/data-hub',
-      visible: canViewDataHub,
+      visible: canReadDataHubData,
     },
   ].filter((metric) => metric.visible && canAccessPage(permissionContext, metric.route));
 
@@ -162,13 +164,13 @@ export function DashboardPage({ user }: { user: RuntimeUser }) {
       status: 'Review',
       route: '/inventory',
     })) : []),
-    ...(canViewAdmin ? [{
+    ...(canReadAdminData ? [{
       title: `${formatNumber(admin.data?.pending_actions)} pending admin actions`,
       owner: 'Admin workflow',
       status: (admin.data?.pending_actions ?? 0) > 0 ? 'Pending' : 'Closed',
       route: '/admin',
     }] : []),
-    ...(canViewDataHub ? [{
+    ...(canReadDataHubData ? [{
       title: `${formatNumber(fileUploads.length)} DataHub uploads available`,
       owner: 'DataHub',
       status: fileUploads.length ? 'Ready' : 'Open',
@@ -261,10 +263,10 @@ export function DashboardPage({ user }: { user: RuntimeUser }) {
 
         <Panel title="Integration Snapshot" description="ERP, database, upload, REST API, and SFTP connection overview.">
           <div className="grid gap-3 sm:grid-cols-2">
-            {canViewDataHub ? <StatCard label="ERP Systems" value={formatNumber(connectedSystems.filter((system) => system.system_type.toLowerCase().includes('erp')).length)} helper="Open Data Hub connections" icon={<Link2 className="h-5 w-5" />} onClick={() => navigate('/data-hub')} /> : null}
-            {canViewDataHub ? <StatCard label="File Uploads" value={formatNumber(fileUploads.length)} helper="Open upload center" icon={<Activity className="h-5 w-5" />} accent="emerald" onClick={() => navigate('/data-hub')} /> : null}
-            {canViewAdmin ? <StatCard label="Open Alerts" value={formatNumber((admin.data?.pending_actions ?? 0) + (analytics.data?.inventory_low_stock_count ?? 0))} helper="Open admin and inventory queues" icon={<Bell className="h-5 w-5" />} accent="amber" onClick={() => navigate('/admin')} /> : null}
-            {canViewDataHub ? <StatCard label="REST APIs" value={formatNumber(connectedSystems.filter((system) => system.system_type.toLowerCase().includes('api')).length)} helper="Open Data Hub integrations" icon={<Link2 className="h-5 w-5" />} accent="violet" onClick={() => navigate('/data-hub')} /> : null}
+            {canReadDataHubData ? <StatCard label="ERP Systems" value={formatNumber(connectedSystems.filter((system) => system.system_type.toLowerCase().includes('erp')).length)} helper="Open Data Hub connections" icon={<Link2 className="h-5 w-5" />} onClick={() => navigate('/data-hub')} /> : null}
+            {canReadDataHubData ? <StatCard label="File Uploads" value={formatNumber(fileUploads.length)} helper="Open upload center" icon={<Activity className="h-5 w-5" />} accent="emerald" onClick={() => navigate('/data-hub')} /> : null}
+            {canReadAdminData ? <StatCard label="Open Alerts" value={formatNumber((admin.data?.pending_actions ?? 0) + (analytics.data?.inventory_low_stock_count ?? 0))} helper="Open admin and inventory queues" icon={<Bell className="h-5 w-5" />} accent="amber" onClick={() => navigate('/admin')} /> : null}
+            {canReadDataHubData ? <StatCard label="REST APIs" value={formatNumber(connectedSystems.filter((system) => system.system_type.toLowerCase().includes('api')).length)} helper="Open Data Hub integrations" icon={<Link2 className="h-5 w-5" />} accent="violet" onClick={() => navigate('/data-hub')} /> : null}
           </div>
         </Panel>
       </div>

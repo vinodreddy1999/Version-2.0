@@ -15,8 +15,8 @@ Version 1 and Version 2 use independent Compose projects, networks, ports, image
 V2 images:
 
 ```text
-vinodreddy1999/metam-services-v2-fullstack:2.0.0-beta.1
-vinodreddy1999/metam-services-v2-frontend:2.0.0-beta.1
+vinodreddy1999/metam-services-v2-fullstack:2.0.0-beta.4
+vinodreddy1999/metam-services-v2-frontend:2.0.0-beta.4
 ```
 
 Start V2 without stopping V1:
@@ -32,3 +32,5 @@ docker compose down
 ```
 
 Do not use `-v` when stopping unless the V2 database should also be deleted.
+
+Current browser and role evidence is recorded in [Version 2 Current Role and Route Validation](VERSION_2_CURRENT_VALIDATION.md).

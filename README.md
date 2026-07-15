@@ -20,7 +20,7 @@ Side-by-side URLs after Docker Compose starts:
 - Version 2: `http://localhost:18080`
 - Version 2 API: `http://localhost:18000`
 
-See [Version 2 Deployment](docs/VERSION_2_DEPLOYMENT.md), [Information Architecture](docs/INFORMATION_ARCHITECTURE_TREE.md), and [Performance Baseline](docs/PERFORMANCE_BASELINE.md).
+See [Version 2 Deployment](docs/VERSION_2_DEPLOYMENT.md), [Current Role and Route Validation](docs/VERSION_2_CURRENT_VALIDATION.md), [Information Architecture](docs/INFORMATION_ARCHITECTURE_TREE.md), and [Performance Baseline](docs/PERFORMANCE_BASELINE.md).
 
 ## Existing backend foundation
 

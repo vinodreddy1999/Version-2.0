@@ -31,7 +31,7 @@ const routeModuleMap: Record<string, string> = {
 const sectionAccess: Record<RuntimeUser['role'], AppSection[]> = {
   super_admin: ['dashboard', 'admin', 'data-hub', 'operations', 'intelligence'],
   account_owner: ['dashboard', 'admin', 'data-hub', 'operations', 'intelligence'],
-  organization_admin: ['dashboard', 'admin', 'data-hub', 'operations', 'intelligence'],
+  organization_admin: ['dashboard', 'admin', 'operations', 'intelligence'],
   admin: ['dashboard', 'admin', 'data-hub', 'operations', 'intelligence'],
   team_manager: ['dashboard', 'operations', 'intelligence'],
   supervisor: ['dashboard', 'operations', 'intelligence'],

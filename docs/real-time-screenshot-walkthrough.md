@@ -1,5 +1,7 @@
 # Metam Services - Real-Time Screenshot Walkthrough
 
+> **Current Version 2 validation:** The live Docker build was revalidated on 15 July 2026. All 11 demo roles, all 8 platform workspaces, and 104 client-context routes passed. The two report routes previously described as blocked render normally in Chrome. See [Version 2 Current Role and Route Validation](VERSION_2_CURRENT_VALIDATION.md) for current screenshots and evidence. The older screenshots below remain a historical interface walkthrough and must not be used as current defect results.
+
 Captured from the running Docker application on 2026-06-29.  
 Application URL: `http://localhost:8080`  
 Backend URL: `http://localhost:8000`
