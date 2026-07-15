@@ -155,6 +155,23 @@ app.include_router(create_module_router("production_orders", "/production-orders
 app.include_router(create_module_router("production_schedules", "/production-schedules"))
 
 frontend_dist = Path(__file__).resolve().parent.parent / "frontend" / "dist"
+SPA_HTML_ROUTES = {
+    "/inventory/reports",
+    "/production/reports",
+}
+
+
+@app.middleware("http")
+async def serve_spa_for_conflicting_html_routes(request: Request, call_next):
+    accepts_html = "text/html" in request.headers.get("accept", "")
+    if (
+        request.method == "GET"
+        and request.url.path in SPA_HTML_ROUTES
+        and accepts_html
+        and frontend_dist.exists()
+    ):
+        return FileResponse(frontend_dist / "index.html")
+    return await call_next(request)
 
 
 def result(module: ModuleKey, action: str, message: str, data: dict[str, Any] | list[dict[str, Any]]) -> ApiResult:
