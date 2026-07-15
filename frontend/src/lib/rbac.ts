@@ -69,6 +69,7 @@ export function canAccessPage(context: PermissionContext, path: string) {
 
 export function canPerformAction(user: RuntimeUser, action: ActionKey) {
   if (!user.is_active) return false;
+  if (user.demo_read_only && action !== 'view' && action !== 'export') return false;
   if (user.role === 'super_admin') return true;
   if (action === 'view') return true;
   if (action === 'export') return user.permissions.includes('data.export') || user.permissions.includes('data.read') || canAccessSection(user, 'operations');
@@ -100,11 +101,11 @@ export function canManagePlatform(user: RuntimeUser) {
 }
 
 export function canCreateCompanies(user: RuntimeUser) {
-  return ['super_admin', 'account_owner'].includes(user.role);
+  return !user.demo_read_only && ['super_admin', 'account_owner'].includes(user.role);
 }
 
 export function canWriteOperationalData(user: RuntimeUser) {
-  return user.permissions.includes('data.write');
+  return !user.demo_read_only && user.permissions.includes('data.write');
 }
 
 export function canReadAuditLogs(user: RuntimeUser) {
@@ -112,11 +113,11 @@ export function canReadAuditLogs(user: RuntimeUser) {
 }
 
 export function canEditExecutiveMetrics(user: RuntimeUser) {
-  return ['admin', 'super_admin'].includes(user.role);
+  return !user.demo_read_only && ['admin', 'super_admin'].includes(user.role);
 }
 
 export function canUseDataHubUploads(user: RuntimeUser) {
-  return ['admin', 'super_admin'].includes(user.role);
+  return !user.demo_read_only && ['admin', 'super_admin'].includes(user.role);
 }
 
 export { routeModuleMap };

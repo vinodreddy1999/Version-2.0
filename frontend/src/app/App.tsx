@@ -183,7 +183,7 @@ export function App() {
   }
 
   const user = session.data;
-  const shouldShowPasswordPrompt = (user.force_password_change || user.password_expiry_warning) && passwordPromptSkippedFor !== user.id;
+  const shouldShowPasswordPrompt = !user.demo_read_only && (user.force_password_change || user.password_expiry_warning) && passwordPromptSkippedFor !== user.id;
   if (shouldShowPasswordPrompt) {
     return (
       <PasswordChangeGate
@@ -248,10 +248,11 @@ function AuthenticatedApp({ user, onLogout }: { user: RuntimeUser; onLogout: () 
               <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Signed in</p>
               <p className="mt-2 truncate text-sm font-semibold text-white">{platformUser.fullName}</p>
               <p className="mt-1 text-sm text-slate-300">{user.email}</p>
-              <div className="mt-3 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/8 px-3 py-1 text-xs font-semibold uppercase tracking-[0.1em] text-cyan-100">
+               <div className="mt-3 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/8 px-3 py-1 text-xs font-semibold uppercase tracking-[0.1em] text-cyan-100">
                 <BadgeCheck className="h-3.5 w-3.5" />
-                {user.role.replace('_', ' ')}
-              </div>
+                 {user.role.replace('_', ' ')}
+               </div>
+               {user.demo_read_only ? <div className="mt-2 text-xs font-semibold uppercase tracking-[0.12em] text-amber-200">Read-only demo</div> : null}
             </div>
           </div>
         ) : (
@@ -292,7 +293,12 @@ function AuthenticatedApp({ user, onLogout }: { user: RuntimeUser; onLogout: () 
       <div className={`transition-all duration-200 ${sidebarExpanded ? 'xl:pl-64' : 'xl:pl-20'}`}>
         <header className="sticky top-0 z-20 border-b border-white/10 bg-slate-950/70 backdrop-blur-xl">
           <div className="flex h-16 items-center justify-between gap-4 px-4 sm:px-6">
-            <div className="flex items-center gap-3">
+             <div className="flex items-center gap-3">
+               {user.demo_read_only ? (
+                 <div className="hidden rounded-full border border-amber-300/25 bg-amber-400/10 px-3 py-1.5 text-xs font-semibold text-amber-100 sm:block">
+                   Read-only role demo
+                 </div>
+               ) : null}
               <button className="focus-ring rounded-xl border border-white/10 bg-white/8 p-2 text-slate-100 xl:hidden" aria-label="Open navigation">
                 <Menu className="h-4 w-4" />
               </button>
@@ -326,7 +332,7 @@ function AuthenticatedApp({ user, onLogout }: { user: RuntimeUser; onLogout: () 
                   onLogout();
                 }}
               >
-                Sign out
+                {user.demo_read_only ? 'Switch role' : 'Sign out'}
               </button>
             </div>
           </div>
@@ -447,11 +453,18 @@ function PlatformOnly({ user, fallbackPath, children }: { user: RuntimeUser; fal
 function LoginScreen({ onLogin, baseUrl }: { onLogin: () => void; baseUrl: string }) {
   const resetToken = new URLSearchParams(window.location.search).get('token');
   const isResetPath = window.location.pathname.includes('reset-password');
-  const [email, setEmail] = useState('super@metam.local');
-  const [password, setPassword] = useState('SuperAdmin123!');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [forgotMode, setForgotMode] = useState(false);
+  const [demoSubmittingRole, setDemoSubmittingRole] = useState<RuntimeUser['role'] | null>(null);
+  const demoConfig = useQuery({
+    queryKey: ['public-demo-config'],
+    queryFn: backend.demoConfig,
+    retry: false,
+    staleTime: 5 * 60 * 1000,
+  });
 
   if (isResetPath && resetToken) {
     return <ResetPasswordScreen token={resetToken} onComplete={() => { window.history.replaceState({}, '', '/'); setForgotMode(false); }} />;
@@ -475,9 +488,22 @@ function LoginScreen({ onLogin, baseUrl }: { onLogin: () => void; baseUrl: strin
     }
   }
 
+  async function startDemo(role: RuntimeUser['role']) {
+    setDemoSubmittingRole(role);
+    setError('');
+    try {
+      await backend.demoLogin(role);
+      onLogin();
+    } catch (demoError) {
+      setError(demoError instanceof Error ? demoError.message : 'Unable to start the role demo');
+    } finally {
+      setDemoSubmittingRole(null);
+    }
+  }
+
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
-      <div className="w-full max-w-md rounded-[36px] border border-white/12 bg-white/8 p-7 shadow-[0_30px_90px_rgba(15,23,42,0.24)] backdrop-blur-2xl">
+      <div className={`w-full rounded-[36px] border border-white/12 bg-white/8 p-7 shadow-[0_30px_90px_rgba(15,23,42,0.24)] backdrop-blur-2xl ${demoConfig.data?.enabled ? 'max-w-4xl' : 'max-w-md'}`}>
         <div className="mb-6 flex items-center gap-3">
           <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-cyan-300/20 bg-cyan-400/15 text-cyan-100 shadow-[0_0_34px_rgba(34,211,238,0.24)]">
             <Boxes className="h-5 w-5" />
@@ -488,7 +514,35 @@ function LoginScreen({ onLogin, baseUrl }: { onLogin: () => void; baseUrl: strin
           </div>
         </div>
 
+        {demoConfig.data?.enabled && demoConfig.data.roles.length ? (
+          <section className="mb-6 rounded-3xl border border-cyan-300/20 bg-slate-950/35 p-5">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <p className="text-sm font-semibold text-white">Passwordless role preview</p>
+                <p className="mt-1 text-xs text-slate-400">Choose a role to document its real navigation and data. All changes are blocked by the backend.</p>
+              </div>
+              <span className="rounded-full border border-amber-300/25 bg-amber-400/10 px-3 py-1 text-xs font-semibold text-amber-100">Read-only · {demoConfig.data.session_minutes} min</span>
+            </div>
+            <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {demoConfig.data.roles.map((item) => (
+                <button
+                  key={item.role}
+                  type="button"
+                  className="focus-ring rounded-2xl border border-white/10 bg-white/[0.05] p-4 text-left transition hover:border-cyan-300/30 hover:bg-cyan-400/10 disabled:opacity-60"
+                  disabled={demoSubmittingRole !== null}
+                  onClick={() => startDemo(item.role)}
+                >
+                  <span className="block text-sm font-semibold text-white">{demoSubmittingRole === item.role ? 'Opening...' : item.label}</span>
+                  <span className="mt-1 block text-xs leading-5 text-slate-400">{item.description}</span>
+                  <span className="mt-2 block truncate text-xs text-cyan-200">{item.username}</span>
+                </button>
+              ))}
+            </div>
+          </section>
+        ) : null}
+
         <form className="space-y-4" onSubmit={submit}>
+          {demoConfig.data?.enabled ? <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Authorized user sign in</p> : null}
           <label className="block text-sm font-medium text-slate-200">
             Email
             <input className="mt-1 w-full rounded-2xl border border-white/10 bg-white/10 px-4 py-3 text-sm text-white shadow-sm outline-none placeholder:text-slate-500" value={email} onChange={(event) => setEmail(event.target.value)} />
@@ -506,12 +560,7 @@ function LoginScreen({ onLogin, baseUrl }: { onLogin: () => void; baseUrl: strin
           </button>
         </form>
 
-        <div className="mt-5 rounded-2xl border border-white/10 bg-white/8 p-4 text-xs text-slate-300">
-          <p className="font-semibold uppercase tracking-[0.18em] text-slate-100">Seeded access</p>
-          <p>Super admin: super@metam.local / SuperAdmin123!</p>
-          <p>Admin: admin@metam.local / ChangeMe123!</p>
-          <p>User: user@metam.local / User12345!</p>
-        </div>
+        <div className="mt-5 rounded-2xl border border-white/10 bg-white/8 p-4 text-xs text-slate-300">Passwords are never displayed. Documentation visitors should use the read-only role preview.</div>
       </div>
     </div>
   );

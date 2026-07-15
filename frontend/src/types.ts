@@ -161,12 +161,26 @@ export type RuntimeUser = {
   password_days_to_expiry?: number | null;
   password_expiry_warning?: boolean;
   force_password_change?: boolean;
+  demo_read_only?: boolean;
+  demo_role?: RuntimeUser['role'] | null;
 };
 
 export type RuntimeLoginResult = {
   access_token: string;
   token_type: string;
   user: RuntimeUser;
+};
+
+export type DemoConfig = {
+  enabled: boolean;
+  read_only: boolean;
+  session_minutes: number;
+  roles: Array<{
+    role: RuntimeUser['role'];
+    label: string;
+    description: string;
+    username: string;
+  }>;
 };
 
 export type PasswordPolicy = {

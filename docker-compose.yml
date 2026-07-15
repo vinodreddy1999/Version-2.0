@@ -50,13 +50,15 @@ services:
       - metam-v2-network
 
   platform-api:
-    image: vinodreddy1999/metam-services-v2-fullstack:${METAM_V2_IMAGE_TAG:-2.0.0-beta.1}
+    image: vinodreddy1999/metam-services-v2-fullstack:${METAM_V2_IMAGE_TAG:-2.0.0-beta.2}
     build: .
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000
     restart: unless-stopped
     environment:
       DATABASE_URL: postgresql+psycopg2://${POSTGRES_USER:-metam}:${POSTGRES_PASSWORD:-metam}@postgres:5432/${POSTGRES_DB:-metam_v2}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      ENABLE_PUBLIC_DEMO: ${ENABLE_PUBLIC_DEMO:-true}
+      PUBLIC_DEMO_TOKEN_MINUTES: ${PUBLIC_DEMO_TOKEN_MINUTES:-120}
     ports:
       - "${V2_API_PORT:-18000}:8000"
     depends_on:
@@ -73,12 +75,14 @@ services:
       - metam-v2-network
 
   fullstack-app:
-    image: vinodreddy1999/metam-services-v2-fullstack:${METAM_V2_IMAGE_TAG:-2.0.0-beta.1}
+    image: vinodreddy1999/metam-services-v2-fullstack:${METAM_V2_IMAGE_TAG:-2.0.0-beta.2}
     build: .
     restart: unless-stopped
     environment:
       DATABASE_URL: postgresql+psycopg2://${POSTGRES_USER:-metam}:${POSTGRES_PASSWORD:-metam}@postgres:5432/${POSTGRES_DB:-metam_v2}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      ENABLE_PUBLIC_DEMO: ${ENABLE_PUBLIC_DEMO:-true}
+      PUBLIC_DEMO_TOKEN_MINUTES: ${PUBLIC_DEMO_TOKEN_MINUTES:-120}
     ports:
       - "${V2_APP_PORT:-18080}:8080"
     depends_on:
@@ -97,7 +101,7 @@ services:
       - metam-v2-network
 
   frontend:
-    image: vinodreddy1999/metam-services-v2-frontend:${METAM_V2_IMAGE_TAG:-2.0.0-beta.1}
+    image: vinodreddy1999/metam-services-v2-frontend:${METAM_V2_IMAGE_TAG:-2.0.0-beta.2}
     build:
       context: ./frontend
       args:
@@ -112,7 +116,7 @@ services:
       - metam-v2-network
 
   worker:
-    image: vinodreddy1999/metam-services-v2-fullstack:${METAM_V2_IMAGE_TAG:-2.0.0-beta.1}
+    image: vinodreddy1999/metam-services-v2-fullstack:${METAM_V2_IMAGE_TAG:-2.0.0-beta.2}
     build: .
     command: celery -A app.jobs.celery_app worker --loglevel=info
     restart: unless-stopped
@@ -129,7 +133,7 @@ services:
       - metam-v2-network
 
   seed-enterprise-data:
-    image: vinodreddy1999/metam-services-v2-fullstack:${METAM_V2_IMAGE_TAG:-2.0.0-beta.1}
+    image: vinodreddy1999/metam-services-v2-fullstack:${METAM_V2_IMAGE_TAG:-2.0.0-beta.2}
     build: .
     command: python scripts/seed_enterprise_data.py
     restart: "no"
@@ -143,7 +147,7 @@ services:
       - metam-v2-network
 
   vinod-live-data-stream:
-    image: vinodreddy1999/metam-services-v2-fullstack:${METAM_V2_IMAGE_TAG:-2.0.0-beta.1}
+    image: vinodreddy1999/metam-services-v2-fullstack:${METAM_V2_IMAGE_TAG:-2.0.0-beta.2}
     build: .
     command: python scripts/run_vinod_live_stream.py
     restart: unless-stopped

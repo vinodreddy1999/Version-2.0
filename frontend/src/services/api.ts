@@ -10,6 +10,7 @@ import type {
   DataMappingRule,
   DashboardAccessResult,
   DataQuality,
+  DemoConfig,
   Company,
   FeatureFlag,
   HealthResponse,
@@ -297,6 +298,12 @@ export const backend = {
   },
   login: async (email: string, password: string) => {
     const response = await api.post<ApiEnvelope<RuntimeLoginResult>>('/runtime/auth/login', { email, password });
+    window.localStorage.setItem(tokenStorageKey, response.data.data.access_token);
+    return response.data.data;
+  },
+  demoConfig: () => getEnvelope<DemoConfig>('/runtime/auth/demo-config'),
+  demoLogin: async (role: RuntimeUser['role']) => {
+    const response = await api.post<ApiEnvelope<RuntimeLoginResult>>('/runtime/auth/demo-login', { role });
     window.localStorage.setItem(tokenStorageKey, response.data.data.access_token);
     return response.data.data;
   },

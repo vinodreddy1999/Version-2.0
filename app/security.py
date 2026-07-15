@@ -60,17 +60,22 @@ def generate_secure_password(length: int = 16) -> str:
             return password
 
 
-def create_token(subject: str, tenant_id: str, permissions: list[str], minutes: int = 30) -> str:
+def create_token(
+    subject: str,
+    tenant_id: str,
+    permissions: list[str],
+    minutes: int = 30,
+    claims: dict[str, object] | None = None,
+) -> str:
     now = datetime.now(timezone.utc)
-    return jwt.encode(
-        {
-            "jti": str(uuid4()),
-            "sub": subject,
-            "tenant_id": tenant_id,
-            "permissions": permissions,
-            "iat": int(now.timestamp()),
-            "exp": int((now + timedelta(minutes=minutes)).timestamp()),
-        },
-        JWT_SECRET,
-        algorithm=JWT_ALGORITHM,
-    )
+    payload: dict[str, object] = {
+        "jti": str(uuid4()),
+        "sub": subject,
+        "tenant_id": tenant_id,
+        "permissions": permissions,
+        "iat": int(now.timestamp()),
+        "exp": int((now + timedelta(minutes=minutes)).timestamp()),
+    }
+    if claims:
+        payload.update(claims)
+    return jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)

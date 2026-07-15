@@ -1,5 +1,7 @@
 # Metam Services Version 2.0
 
+Role-by-role documentation can use the passwordless, backend-enforced read-only workflow in [docs/passwordless-role-demo.md](docs/passwordless-role-demo.md).
+
 This repository is the isolated Version 2.0 track. Version 1 remains in `vinodreddy1999/manufacturing-operations-platform` and can run at the same time.
 
 Version 2.0 first-batch additions:

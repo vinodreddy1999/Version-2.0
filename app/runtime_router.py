@@ -1,3 +1,4 @@
+import os
 import secrets
 from datetime import datetime, timedelta
 from typing import Any
@@ -11,6 +12,7 @@ from sqlalchemy.orm import Session
 from .database import engine, get_db
 from .platform_models import AuditLog, ModuleRecord, User
 from .runtime_schemas import (
+    DemoLoginPayload,
     LoginPayload,
     LoginResult,
     AdminResetPasswordPayload,
@@ -58,6 +60,42 @@ ROLE_PERMISSIONS = {
     "user": ["data.read"],
 }
 
+DEMO_ROLE_DETAILS = [
+    ("super_admin", "Super Admin", "Platform-wide administration and governance"),
+    ("account_owner", "Account Owner", "Account, organization, and team oversight"),
+    ("organization_admin", "Organization Admin", "Company administration and data management"),
+    ("admin", "Admin", "Company users, Data Hub, and operational administration"),
+    ("team_manager", "Team Manager", "Team work allocation and operational oversight"),
+    ("supervisor", "Supervisor", "Operational review and supervised updates"),
+    ("operator", "Operator", "Assigned operational screens and records"),
+    ("auditor", "Auditor", "Read-only operational and audit visibility"),
+    ("qa_tester", "QA Tester", "Quality workflows and operational verification"),
+    ("custom", "Custom User", "Custom assigned module visibility"),
+    ("user", "Standard User", "Standard assigned read-only workspace"),
+]
+DEMO_READ_PERMISSIONS = {"platform.super_admin", "platform.admin", "data.read", "audit.read"}
+
+
+def public_demo_enabled() -> bool:
+    return os.getenv("ENABLE_PUBLIC_DEMO", "false").strip().lower() in {"1", "true", "yes", "on"}
+
+
+def public_demo_minutes() -> int:
+    try:
+        return max(15, min(int(os.getenv("PUBLIC_DEMO_TOKEN_MINUTES", "120")), 240))
+    except ValueError:
+        return 120
+
+
+def public_demo_roles() -> list[str]:
+    configured = os.getenv("PUBLIC_DEMO_ROLES", "").strip()
+    allowed = {item.strip() for item in configured.split(",") if item.strip()} if configured else {item[0] for item in DEMO_ROLE_DETAILS}
+    return [role for role, _, _ in DEMO_ROLE_DETAILS if role in allowed]
+
+
+def demo_permissions_for(role: str) -> list[str]:
+    return [permission for permission in permissions_for(role) if permission in DEMO_READ_PERMISSIONS]
+
 
 def ensure_runtime_schema() -> None:
     inspector = inspect(engine)
@@ -94,6 +132,7 @@ def has_override_scope(user: User) -> bool:
 
 def serialize_user(user: User) -> dict[str, Any]:
     role = user.role or "user"
+    demo_read_only = bool(getattr(user, "_demo_read_only", False))
     now = datetime.utcnow()
     expires_at = user.password_expires_at or (user.password_changed_at + timedelta(days=PASSWORD_EXPIRY_DAYS) if user.password_changed_at else None)
     days_to_expiry = (expires_at - now).days if expires_at else None
@@ -106,11 +145,13 @@ def serialize_user(user: User) -> dict[str, Any]:
         "name": user.name,
         "role": role,
         "is_active": user.is_active,
-        "permissions": permissions_for(role),
+        "permissions": demo_permissions_for(role) if demo_read_only else permissions_for(role),
         "password_expires_at": expires_at.isoformat() if expires_at else None,
         "password_days_to_expiry": days_to_expiry,
         "password_expiry_warning": days_to_expiry is not None and 0 <= days_to_expiry <= PASSWORD_EXPIRY_WARNING_DAYS,
         "force_password_change": bool(user.force_password_change),
+        "demo_read_only": demo_read_only,
+        "demo_role": getattr(user, "_demo_role", None),
     }
 
 
@@ -144,6 +185,8 @@ def current_user(request: Request, db: Session = Depends(get_db)) -> User:
     user = db.get(User, user_id)
     if not user or not user.is_active:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="User is disabled or missing")
+    user._demo_read_only = bool(payload.get("demo_read_only", False))
+    user._demo_role = payload.get("demo_role")
     return user
 
 
@@ -216,6 +259,59 @@ def runtime_login(payload: LoginPayload, db: Session = Depends(get_db)) -> Runti
         user=SessionUser(**serialize_user(user)),
     )
     return runtime_result("login", "Authenticated user session.", result.model_dump())
+
+
+@router.get("/auth/demo-config", response_model=RuntimeEnvelope)
+def public_demo_config(db: Session = Depends(get_db)) -> RuntimeEnvelope:
+    enabled = public_demo_enabled()
+    roles: list[dict[str, Any]] = []
+    if enabled:
+        allowed_roles = public_demo_roles()
+        users = (
+            db.query(User)
+            .filter(User.tenant_id == TENANT_ID, User.is_active.is_(True), User.role.in_(allowed_roles))
+            .order_by(User.email)
+            .all()
+        )
+        users_by_role = {user.role: user for user in users}
+        for role, label, description in DEMO_ROLE_DETAILS:
+            user = users_by_role.get(role)
+            if role in allowed_roles and user:
+                roles.append({"role": role, "label": label, "description": description, "username": user.email})
+    return runtime_result(
+        "demo_config",
+        "Passwordless read-only demonstration configuration.",
+        {"enabled": enabled, "read_only": True, "session_minutes": public_demo_minutes(), "roles": roles},
+    )
+
+
+@router.post("/auth/demo-login", response_model=RuntimeEnvelope)
+def public_demo_login(payload: DemoLoginPayload, db: Session = Depends(get_db)) -> RuntimeEnvelope:
+    if not public_demo_enabled():
+        raise HTTPException(status_code=404, detail="Passwordless demo mode is not enabled")
+    if payload.role not in public_demo_roles():
+        raise HTTPException(status_code=403, detail="This role is not available in the public demo")
+    user = (
+        db.query(User)
+        .filter(User.tenant_id == TENANT_ID, User.role == payload.role, User.is_active.is_(True))
+        .order_by(User.email)
+        .first()
+    )
+    if not user:
+        raise HTTPException(status_code=404, detail="No active demo user is available for this role")
+    user._demo_read_only = True
+    user._demo_role = payload.role
+    result = LoginResult(
+        access_token=create_token(
+            user.id,
+            user.tenant_id,
+            demo_permissions_for(payload.role),
+            minutes=public_demo_minutes(),
+            claims={"demo_read_only": True, "demo_role": payload.role},
+        ),
+        user=SessionUser(**serialize_user(user)),
+    )
+    return runtime_result("demo_login", "Read-only demonstration session created.", result.model_dump())
 
 
 @router.get("/auth/password-policy", response_model=RuntimeEnvelope)

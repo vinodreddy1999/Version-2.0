@@ -1095,6 +1095,52 @@ def test_all_seeded_runtime_roles_can_login():
         assert response.json()["data"]["user"]["role"] == role
 
 
+def test_passwordless_demo_is_disabled_unless_explicitly_enabled(monkeypatch):
+    monkeypatch.delenv("ENABLE_PUBLIC_DEMO", raising=False)
+    config = client.get("/runtime/auth/demo-config")
+    assert config.status_code == 200
+    assert config.json()["data"]["enabled"] is False
+    assert config.json()["data"]["roles"] == []
+    assert client.post("/runtime/auth/demo-login", json={"role": "super_admin"}).status_code == 404
+
+
+def test_passwordless_demo_supports_all_roles_and_enforces_read_only(monkeypatch):
+    monkeypatch.setenv("ENABLE_PUBLIC_DEMO", "true")
+    config = client.get("/runtime/auth/demo-config")
+    assert config.status_code == 200
+    roles = config.json()["data"]["roles"]
+    assert len(roles) == 11
+    assert all("username" in item and "password" not in item for item in roles)
+
+    for role in [item["role"] for item in roles]:
+        response = client.post("/runtime/auth/demo-login", json={"role": role})
+        assert response.status_code == 200
+        assert response.json()["data"]["user"]["demo_read_only"] is True
+        assert response.json()["data"]["user"]["demo_role"] == role
+
+    login = client.post("/runtime/auth/demo-login", json={"role": "super_admin"})
+    headers = {"Authorization": f"Bearer {login.json()['data']['access_token']}"}
+    session = client.get("/runtime/auth/me", headers=headers)
+    assert session.status_code == 200
+    assert session.json()["data"]["demo_read_only"] is True
+    assert client.get("/runtime/records", headers=headers).status_code == 200
+    blocked = client.post(
+        "/runtime/records",
+        headers=headers,
+        json={
+            "module_key": "inventory",
+            "record_type": "raw_material",
+            "record_code": "DEMO-WRITE-BLOCKED",
+            "name": "Must not be created",
+            "status": "AVAILABLE",
+            "quantity": 1,
+            "payload": {},
+        },
+    )
+    assert blocked.status_code == 403
+    assert blocked.json()["detail"] == "Read-only demo sessions cannot modify data."
+
+
 def test_disabled_runtime_user_cannot_login():
     response = client.post("/runtime/auth/login", json={"email": "disabled.operator@metam.local", "password": "Disabled123!"})
     assert response.status_code == 403

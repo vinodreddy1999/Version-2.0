@@ -29,6 +29,10 @@ class LoginPayload(BaseModel):
     password: str = Field(min_length=1)
 
 
+class DemoLoginPayload(BaseModel):
+    role: RoleName
+
+
 class ForgotPasswordPayload(BaseModel):
     email: str
 
@@ -65,6 +69,8 @@ class SessionUser(BaseModel):
     password_days_to_expiry: int | None = None
     password_expiry_warning: bool = False
     force_password_change: bool = False
+    demo_read_only: bool = False
+    demo_role: RoleName | None = None
 
 
 class LoginResult(BaseModel):
