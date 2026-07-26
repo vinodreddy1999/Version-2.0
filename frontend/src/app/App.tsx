@@ -73,6 +73,53 @@ const platformNavItems = [
   { to: '/admin/performance', label: 'Performance', icon: Activity },
 ];
 
+const abcTestClientId = 'CLT-000001';
+
+const abcRolePreviewOptions: Array<{ role: RuntimeUser['role']; label: string; email: string; name: string }> = [
+  { role: 'super_admin', label: 'Super Admin', email: 'super@metam.local', name: 'Metam Administrator' },
+  { role: 'account_owner', label: 'Account Owner', email: 'owner.abcmanufacturing@metam.local', name: 'ABC Account Owner' },
+  { role: 'organization_admin', label: 'Organization Admin', email: 'orgadmin.abcmanufacturing@metam.local', name: 'ABC Organization Admin' },
+  { role: 'admin', label: 'Company Admin', email: 'admin.abcmanufacturing@metam.local', name: 'ABC Admin' },
+  { role: 'team_manager', label: 'Team Manager', email: 'manager.abcmanufacturing@metam.local', name: 'ABC Manager' },
+  { role: 'supervisor', label: 'Supervisor', email: 'supervisor.abcmanufacturing@metam.local', name: 'ABC Supervisor' },
+  { role: 'operator', label: 'Operator', email: 'operator.abcmanufacturing@metam.local', name: 'ABC Operator' },
+  { role: 'auditor', label: 'Auditor', email: 'auditor.abcmanufacturing@metam.local', name: 'ABC Auditor' },
+  { role: 'qa_tester', label: 'QA Tester', email: 'qa.abcmanufacturing@metam.local', name: 'ABC QA Tester' },
+  { role: 'custom', label: 'Custom User', email: 'custom.abcmanufacturing@metam.local', name: 'ABC Custom User' },
+  { role: 'user', label: 'Standard User', email: 'viewer.abcmanufacturing@metam.local', name: 'ABC Viewer' },
+];
+
+const rolePermissions: Record<RuntimeUser['role'], string[]> = {
+  super_admin: ['platform.super_admin', 'platform.admin', 'account.override', 'organization.override', 'team.override', 'users.manage', 'roles.manage', 'data.write', 'data.read', 'audit.read', 'data.export', 'data.delete', 'approval.write'],
+  account_owner: ['account.override', 'organization.override', 'team.override', 'users.manage', 'roles.manage', 'data.write', 'data.read', 'audit.read', 'data.export', 'approval.write'],
+  organization_admin: ['organization.override', 'team.override', 'users.manage', 'data.write', 'data.read', 'audit.read', 'data.export', 'approval.write'],
+  admin: ['platform.admin', 'users.manage', 'data.write', 'data.read', 'audit.read', 'data.export', 'approval.write'],
+  team_manager: ['team.override', 'data.write', 'data.read', 'data.export', 'approval.write'],
+  supervisor: ['data.write', 'data.read', 'data.export'],
+  operator: ['data.read'],
+  auditor: ['data.read', 'audit.read', 'data.export'],
+  qa_tester: ['quality.write', 'data.read', 'data.export'],
+  custom: ['data.read'],
+  user: ['data.read'],
+};
+
+function buildAbcPreviewUser(baseUser: RuntimeUser, role: RuntimeUser['role'] | null): RuntimeUser {
+  const preview = abcRolePreviewOptions.find((item) => item.role === role);
+  if (!preview) return baseUser;
+  return {
+    ...baseUser,
+    id: `abc-preview-${preview.role}`,
+    company_id: preview.role === 'super_admin' ? null : 'company-abc-manufacturing',
+    plant_id: preview.role === 'super_admin' ? null : 'plant-abc-manufacturing-001',
+    email: preview.email,
+    name: preview.name,
+    role: preview.role,
+    permissions: rolePermissions[preview.role],
+    demo_read_only: false,
+    demo_role: preview.role,
+  };
+}
+
 function ClientContextSelector({
   clients,
   selectedClientId,
@@ -158,10 +205,34 @@ function ClientContextSelector({
   );
 }
 
+function AbcRolePreviewSwitcher({
+  value,
+  onChange,
+}: {
+  value: RuntimeUser['role'];
+  onChange: (role: RuntimeUser['role'] | null) => void;
+}) {
+  return (
+    <label className="hidden min-w-[220px] lg:block">
+      <span className="mb-1 block text-[10px] font-semibold uppercase tracking-[0.16em] text-cyan-200">ABC test role</span>
+      <select
+        className="form-input w-full py-2 text-sm"
+        value={value}
+        onChange={(event) => onChange(event.target.value as RuntimeUser['role'])}
+      >
+        {abcRolePreviewOptions.map((item) => (
+          <option key={item.role} value={item.role}>{item.label}</option>
+        ))}
+      </select>
+    </label>
+  );
+}
+
 export function App() {
   const baseUrl = useMemo(() => apiConfig.baseUrl, []);
   const [sessionVersion, setSessionVersion] = useState(0);
   const [passwordPromptSkippedFor, setPasswordPromptSkippedFor] = useState<string | null>(null);
+  const [abcPreviewRole, setAbcPreviewRole] = useState<RuntimeUser['role'] | null>(null);
   const session = useQuery({
     queryKey: ['runtime-session', sessionVersion],
     queryFn: backend.currentUser,
@@ -183,6 +254,7 @@ export function App() {
   }
 
   const user = session.data;
+  const effectiveUser = buildAbcPreviewUser(user, abcPreviewRole);
   const shouldShowPasswordPrompt = !user.demo_read_only && (user.force_password_change || user.password_expiry_warning) && passwordPromptSkippedFor !== user.id;
   if (shouldShowPasswordPrompt) {
     return (
@@ -196,10 +268,32 @@ export function App() {
       />
     );
   }
-  return <PlatformProvider runtimeUser={user}><AuthenticatedApp user={user} onLogout={() => setSessionVersion((value) => value + 1)} /></PlatformProvider>;
+  return (
+    <PlatformProvider runtimeUser={effectiveUser}>
+      <AuthenticatedApp
+        user={effectiveUser}
+        abcPreviewRole={abcPreviewRole}
+        onPreviewRoleChange={setAbcPreviewRole}
+        onLogout={() => {
+          setAbcPreviewRole(null);
+          setSessionVersion((value) => value + 1);
+        }}
+      />
+    </PlatformProvider>
+  );
 }
 
-function AuthenticatedApp({ user, onLogout }: { user: RuntimeUser; onLogout: () => void }) {
+function AuthenticatedApp({
+  user,
+  abcPreviewRole,
+  onPreviewRoleChange,
+  onLogout,
+}: {
+  user: RuntimeUser;
+  abcPreviewRole: RuntimeUser['role'] | null;
+  onPreviewRoleChange: (role: RuntimeUser['role'] | null) => void;
+  onLogout: () => void;
+}) {
   const { state, selectedClientId, selectedClient, isPlatformContext, canSelectPlatform, selectClient, platformUser } = usePlatform();
   const location = useLocation();
   const navigate = useNavigate();
@@ -213,6 +307,10 @@ function AuthenticatedApp({ user, onLogout }: { user: RuntimeUser; onLogout: () 
   useEffect(() => {
     sessionStorage.setItem('metam-sidebar-expanded', String(sidebarExpanded));
   }, [sidebarExpanded]);
+
+  useEffect(() => {
+    if (selectedClientId !== abcTestClientId && abcPreviewRole) onPreviewRoleChange(null);
+  }, [abcPreviewRole, onPreviewRoleChange, selectedClientId]);
 
   return (
     <div className="app-shell min-h-screen bg-background text-white">
@@ -319,6 +417,9 @@ function AuthenticatedApp({ user, onLogout }: { user: RuntimeUser; onLogout: () 
                 />
                 <p className="hidden truncate text-xs text-slate-400 sm:block">{isPlatformContext ? 'Platform Context · USD' : `${selectedClient?.clientId} · ${selectedClient?.currency}`}</p>
               </div>
+              {selectedClientId === abcTestClientId ? (
+                <AbcRolePreviewSwitcher value={abcPreviewRole ?? user.role} onChange={onPreviewRoleChange} />
+              ) : null}
             </div>
             <div className="flex items-center gap-3">
               <div className="hidden items-center gap-2 rounded-full border border-white/10 bg-white/8 px-3 py-1.5 text-xs text-slate-300 sm:flex">
