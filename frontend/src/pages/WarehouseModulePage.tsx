@@ -12,6 +12,7 @@ import { ScrollableTableFrame } from '../components/ScrollableTableFrame';
 import { StatCard } from '../components/StatCard';
 import { StatusBadge } from '../components/StatusBadge';
 import { applyModuleFilters, type ModuleFilterValues } from '../lib/moduleFilters';
+import { getUserDataScope, scopeFilterDefaults, scopeOptions } from '../lib/rbac';
 import { usePlatform } from '../platform/PlatformContext';
 import type { RuntimeUser } from '../types';
 import {
@@ -161,7 +162,8 @@ const cycleCountFilterMap = {
 };
 
 function WarehouseDashboard() {
-  const [filters, setFilters] = useState<ModuleFilterValues>({});
+  const { platformUser } = usePlatform();
+  const [filters, setFilters] = useState<ModuleFilterValues>(() => scopeFilterDefaults(userFromPlatform(platformUser), platformUser));
   const filteredReceiving = useMemo(
     () => applyModuleFilters(receivingRecords, filters, receivingFilterMap),
     [filters],
@@ -354,6 +356,8 @@ function WarehouseFilters({
   filters?: ModuleFilterValues;
   onChange?: (next: ModuleFilterValues) => void;
 }) {
+  const { platformUser } = usePlatform();
+  const scope = getUserDataScope(userFromPlatform(platformUser), platformUser);
   function setFilter(key: string, value: string) {
     onChange?.({ ...filters, [key]: value });
   }
@@ -361,18 +365,35 @@ function WarehouseFilters({
   return (
     <Panel title="Warehouse Filters" description="Company context is fixed. Filters refresh dashboard cards, charts, and tables below.">
       <div className={`grid gap-3 ${compact ? 'md:grid-cols-4 xl:grid-cols-8' : 'md:grid-cols-4 xl:grid-cols-[repeat(8,minmax(0,1fr))_auto]'}`}>
-        <ModuleFilterSelect label="Plant" options={warehouseCompany.plants} value={filters.Plant ?? ''} onChange={(value) => setFilter('Plant', value)} />
-        <ModuleFilterSelect label="Warehouse" options={warehouseCompany.warehouses} value={filters.Warehouse ?? ''} onChange={(value) => setFilter('Warehouse', value)} />
+        <ModuleFilterSelect label="Plant" options={scopeOptions(warehouseCompany.plants, scope.plant)} value={filters.Plant ?? scope.plant ?? ''} onChange={(value) => setFilter('Plant', value)} />
+        <ModuleFilterSelect label="Warehouse" options={scopeOptions(warehouseCompany.warehouses, scope.warehouse)} value={filters.Warehouse ?? scope.warehouse ?? ''} onChange={(value) => setFilter('Warehouse', value)} />
         <ModuleFilterSelect label="Zone" options={warehouseCompany.zones} value={filters.Zone ?? ''} onChange={(value) => setFilter('Zone', value)} />
         <ModuleFilterSelect label="Bin" options={warehouseCompany.bins} value={filters.Bin ?? ''} onChange={(value) => setFilter('Bin', value)} />
         <ModuleFilterSelect label="Product" options={warehouseCompany.products} value={filters.Product ?? ''} onChange={(value) => setFilter('Product', value)} />
         <ModuleFilterSelect label="Category" options={warehouseCategoryOptions} value={filters.Category ?? ''} onChange={(value) => setFilter('Category', value)} />
         <Field label="Date Range"><input className="form-input mt-1 w-full" type="date" defaultValue="2026-06-24" /></Field>
         <ModuleFilterSelect label="Owner" options={warehouseOwnerOptions} value={filters.Owner ?? ''} onChange={(value) => setFilter('Owner', value)} />
-        {onChange ? <button type="button" className="form-button-subtle self-end" onClick={() => onChange({})}>Clear</button> : null}
+        {onChange ? <button type="button" className="form-button-subtle self-end" onClick={() => onChange(scopeFilterDefaults(userFromPlatform(platformUser), platformUser))}>Clear</button> : null}
       </div>
     </Panel>
   );
+}
+
+function userFromPlatform(platformUser?: { plant?: string; warehouse?: string; department?: string; assignedModules?: string[]; assignedApplications?: string[] }): RuntimeUser {
+  return {
+    id: 'scope',
+    tenant_id: 'tenant',
+    email: '',
+    name: '',
+    role: 'user',
+    is_active: true,
+    permissions: [],
+    scope_plant_name: platformUser?.plant,
+    scope_warehouse_name: platformUser?.warehouse,
+    scope_department: platformUser?.department,
+    assigned_modules: platformUser?.assignedModules,
+    assigned_applications: platformUser?.assignedApplications,
+  };
 }
 
 function WarehouseFormDrawer({ title, onClose }: { title: string; onClose: () => void }) {

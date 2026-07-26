@@ -12,6 +12,7 @@ import { ScrollableTableFrame } from '../components/ScrollableTableFrame';
 import { StatCard } from '../components/StatCard';
 import { StatusBadge } from '../components/StatusBadge';
 import { applyModuleFilters, type ModuleFilterValues } from '../lib/moduleFilters';
+import { getUserDataScope, scopeFilterDefaults, scopeOptions } from '../lib/rbac';
 import { usePlatform } from '../platform/PlatformContext';
 import {
   approvals,
@@ -144,7 +145,8 @@ const materialFilterFieldMap = {
 
 function PlanningDashboard() {
   const navigate = useNavigate();
-  const [filters, setFilters] = useState<ModuleFilterValues>({});
+  const { platformUser } = usePlatform();
+  const [filters, setFilters] = useState<ModuleFilterValues>(() => scopeFilterDefaults(userFromPlatform(platformUser), platformUser));
   const filteredDemand = useMemo(
     () => applyModuleFilters(demandPlans, filters, { Product: 'product', Category: planningFilterFieldMap.Category, Planner: 'owner', Status: 'status' }),
     [filters],
@@ -303,6 +305,8 @@ function AuditPanel() {
 }
 
 function PlanningFilterSidebar({ filters = {}, onChange }: { filters?: ModuleFilterValues; onChange?: (next: ModuleFilterValues) => void }) {
+  const { platformUser } = usePlatform();
+  const scope = getUserDataScope(userFromPlatform(platformUser), platformUser);
   function setFilter(key: string, value: string) {
     onChange?.({ ...filters, [key]: value });
   }
@@ -310,16 +314,33 @@ function PlanningFilterSidebar({ filters = {}, onChange }: { filters?: ModuleFil
   return (
     <Panel title="Planning Filters" description="Company context is fixed. Filters refresh dashboard cards, charts, and tables below.">
       <div className="grid gap-3 md:grid-cols-3 xl:grid-cols-[repeat(6,minmax(0,1fr))_auto]">
-        <ModuleFilterSelect label="Plant" options={planningFilters.plants} value={filters.Plant ?? ''} onChange={(value) => setFilter('Plant', value)} />
-        <ModuleFilterSelect label="Warehouse" options={planningFilters.warehouses} value={filters.Warehouse ?? ''} onChange={(value) => setFilter('Warehouse', value)} />
+        <ModuleFilterSelect label="Plant" options={scopeOptions(planningFilters.plants, scope.plant)} value={filters.Plant ?? scope.plant ?? ''} onChange={(value) => setFilter('Plant', value)} />
+        <ModuleFilterSelect label="Warehouse" options={scopeOptions(planningFilters.warehouses, scope.warehouse)} value={filters.Warehouse ?? scope.warehouse ?? ''} onChange={(value) => setFilter('Warehouse', value)} />
         <ModuleFilterSelect label="Product" options={planningFilters.products} value={filters.Product ?? ''} onChange={(value) => setFilter('Product', value)} />
         <ModuleFilterSelect label="Category" options={planningFilters.categories} value={filters.Category ?? ''} onChange={(value) => setFilter('Category', value)} />
         <ModuleFilterSelect label="Planner" options={planningFilters.planners} value={filters.Planner ?? ''} onChange={(value) => setFilter('Planner', value)} />
         <ModuleFilterSelect label="Status" options={planningFilters.statuses} value={filters.Status ?? ''} onChange={(value) => setFilter('Status', value)} />
-        {onChange ? <button type="button" className="form-button-subtle self-end" onClick={() => onChange({})}>Clear</button> : null}
+        {onChange ? <button type="button" className="form-button-subtle self-end" onClick={() => onChange(scopeFilterDefaults(userFromPlatform(platformUser), platformUser))}>Clear</button> : null}
       </div>
     </Panel>
   );
+}
+
+function userFromPlatform(platformUser?: { plant?: string; warehouse?: string; department?: string; assignedModules?: string[]; assignedApplications?: string[] }): RuntimeUser {
+  return {
+    id: 'scope',
+    tenant_id: 'tenant',
+    email: '',
+    name: '',
+    role: 'user',
+    is_active: true,
+    permissions: [],
+    scope_plant_name: platformUser?.plant,
+    scope_warehouse_name: platformUser?.warehouse,
+    scope_department: platformUser?.department,
+    assigned_modules: platformUser?.assignedModules,
+    assigned_applications: platformUser?.assignedApplications,
+  };
 }
 
 function PlanningDataTable({ rows }: { rows: TableRow[] }) {

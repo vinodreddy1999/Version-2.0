@@ -120,4 +120,29 @@ export function canUseDataHubUploads(user: RuntimeUser) {
   return !user.demo_read_only && ['admin', 'super_admin'].includes(user.role);
 }
 
+export function getUserDataScope(user: RuntimeUser, platformUser?: PlatformUser) {
+  const plant = user.scope_plant_name ?? platformUser?.plant ?? null;
+  const warehouse = user.scope_warehouse_name ?? platformUser?.warehouse ?? null;
+  return {
+    plant: plant && plant !== 'All Plants' ? plant : null,
+    warehouse: warehouse && warehouse !== 'All Warehouses' ? warehouse : null,
+    department: user.scope_department ?? platformUser?.department ?? null,
+    modules: user.assigned_modules ?? platformUser?.assignedModules ?? [],
+    applications: user.assigned_applications ?? platformUser?.assignedApplications ?? [],
+  };
+}
+
+export function scopeFilterDefaults(user: RuntimeUser, platformUser?: PlatformUser) {
+  const scope = getUserDataScope(user, platformUser);
+  return {
+    ...(scope.plant ? { Plant: scope.plant } : {}),
+    ...(scope.warehouse ? { Warehouse: scope.warehouse } : {}),
+  };
+}
+
+export function scopeOptions(options: string[], value?: string | null) {
+  if (!value) return options;
+  return options.includes(value) ? [value] : options;
+}
+
 export { routeModuleMap };

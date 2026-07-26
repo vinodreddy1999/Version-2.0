@@ -136,6 +136,11 @@ function buildImpersonatedAbcUser(baseUser: RuntimeUser, impersonatedEmail: stri
     permissions: rolePermissions[role],
     demo_read_only: false,
     demo_role: role,
+    assigned_modules: platformUser.assignedModules,
+    assigned_applications: platformUser.assignedApplications,
+    scope_plant_name: platformUser.plant,
+    scope_warehouse_name: platformUser.warehouse,
+    scope_department: platformUser.department,
   };
 }
 

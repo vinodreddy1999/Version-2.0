@@ -163,6 +163,11 @@ export type RuntimeUser = {
   force_password_change?: boolean;
   demo_read_only?: boolean;
   demo_role?: RuntimeUser['role'] | null;
+  assigned_modules?: string[];
+  assigned_applications?: string[];
+  scope_plant_name?: string | null;
+  scope_warehouse_name?: string | null;
+  scope_department?: string | null;
 };
 
 export type RuntimeLoginResult = {
