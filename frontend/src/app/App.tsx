@@ -338,7 +338,10 @@ function AuthenticatedApp({
   const location = useLocation();
   const navigate = useNavigate();
   const [sidebarExpanded, setSidebarExpanded] = useState(() => sessionStorage.getItem('metam-sidebar-expanded') === 'true');
-  const permissionContext = { user, selectedClient, platformUser, isPlatformContext };
+  const permissionContext = useMemo(
+    () => ({ user, selectedClient, platformUser, isPlatformContext }),
+    [user, selectedClient, platformUser, isPlatformContext],
+  );
   const allowedNavItems = isPlatformContext
     ? platformNavItems.filter((item) => canAccessPage(permissionContext, item.to))
     : navItems.filter((item) => canAccessPage(permissionContext, item.to));
@@ -351,6 +354,12 @@ function AuthenticatedApp({
   useEffect(() => {
     if (selectedClientId !== abcTestClientId && impersonatedEmail) onImpersonationChange(null);
   }, [impersonatedEmail, onImpersonationChange, selectedClientId]);
+
+  useEffect(() => {
+    if (!canAccessPage(permissionContext, location.pathname)) {
+      navigate(allowedFallbackPath, { replace: true });
+    }
+  }, [allowedFallbackPath, location.pathname, navigate, permissionContext]);
 
   return (
     <div className="app-shell min-h-screen bg-background text-white">

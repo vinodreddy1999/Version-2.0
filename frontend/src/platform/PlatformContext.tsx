@@ -33,7 +33,17 @@ const PlatformContext = createContext<PlatformContextValue | null>(null);
 function loadState() {
   try {
     const value = localStorage.getItem(storageKey);
-    return value ? JSON.parse(value) as PlatformState : initialPlatformState;
+    if (!value) return initialPlatformState;
+    const saved = JSON.parse(value) as PlatformState;
+    const usersByEmail = new Map(saved.users.map((user) => [user.email.toLowerCase(), user]));
+    initialPlatformState.users.forEach((user) => usersByEmail.set(user.email.toLowerCase(), user));
+    const clientsById = new Map(saved.clients.map((client) => [client.clientId, client]));
+    initialPlatformState.clients.forEach((client) => clientsById.set(client.clientId, client));
+    return {
+      ...saved,
+      clients: Array.from(clientsById.values()),
+      users: Array.from(usersByEmail.values()),
+    };
   } catch {
     return initialPlatformState;
   }
