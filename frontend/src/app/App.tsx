@@ -103,8 +103,8 @@ const rolePermissions: Record<RuntimeUser['role'], string[]> = {
   user: ['data.read'],
 };
 
-function buildAbcPreviewUser(baseUser: RuntimeUser, role: RuntimeUser['role'] | null): RuntimeUser {
-  const preview = abcRolePreviewOptions.find((item) => item.role === role);
+function buildImpersonatedAbcUser(baseUser: RuntimeUser, role: RuntimeUser['role'] | null): RuntimeUser {
+  const preview = baseUser.role === 'super_admin' ? abcRolePreviewOptions.find((item) => item.role === role) : null;
   if (!preview) return baseUser;
   return {
     ...baseUser,
@@ -205,7 +205,7 @@ function ClientContextSelector({
   );
 }
 
-function AbcRolePreviewSwitcher({
+function SuperAdminImpersonationAccess({
   value,
   onChange,
 }: {
@@ -214,7 +214,7 @@ function AbcRolePreviewSwitcher({
 }) {
   return (
     <label className="hidden min-w-[220px] lg:block">
-      <span className="mb-1 block text-[10px] font-semibold uppercase tracking-[0.16em] text-cyan-200">ABC test role</span>
+      <span className="mb-1 block text-[10px] font-semibold uppercase tracking-[0.16em] text-cyan-200">Impersonation access</span>
       <select
         className="form-input w-full py-2 text-sm"
         value={value}
@@ -232,7 +232,7 @@ export function App() {
   const baseUrl = useMemo(() => apiConfig.baseUrl, []);
   const [sessionVersion, setSessionVersion] = useState(0);
   const [passwordPromptSkippedFor, setPasswordPromptSkippedFor] = useState<string | null>(null);
-  const [abcPreviewRole, setAbcPreviewRole] = useState<RuntimeUser['role'] | null>(null);
+  const [impersonatedRole, setImpersonatedRole] = useState<RuntimeUser['role'] | null>(null);
   const session = useQuery({
     queryKey: ['runtime-session', sessionVersion],
     queryFn: backend.currentUser,
@@ -254,7 +254,7 @@ export function App() {
   }
 
   const user = session.data;
-  const effectiveUser = buildAbcPreviewUser(user, abcPreviewRole);
+  const effectiveUser = buildImpersonatedAbcUser(user, impersonatedRole);
   const shouldShowPasswordPrompt = !user.demo_read_only && (user.force_password_change || user.password_expiry_warning) && passwordPromptSkippedFor !== user.id;
   if (shouldShowPasswordPrompt) {
     return (
@@ -272,10 +272,11 @@ export function App() {
     <PlatformProvider runtimeUser={effectiveUser}>
       <AuthenticatedApp
         user={effectiveUser}
-        abcPreviewRole={abcPreviewRole}
-        onPreviewRoleChange={setAbcPreviewRole}
+        canImpersonate={user.role === 'super_admin'}
+        impersonatedRole={impersonatedRole}
+        onImpersonationChange={setImpersonatedRole}
         onLogout={() => {
-          setAbcPreviewRole(null);
+          setImpersonatedRole(null);
           setSessionVersion((value) => value + 1);
         }}
       />
@@ -285,13 +286,15 @@ export function App() {
 
 function AuthenticatedApp({
   user,
-  abcPreviewRole,
-  onPreviewRoleChange,
+  canImpersonate,
+  impersonatedRole,
+  onImpersonationChange,
   onLogout,
 }: {
   user: RuntimeUser;
-  abcPreviewRole: RuntimeUser['role'] | null;
-  onPreviewRoleChange: (role: RuntimeUser['role'] | null) => void;
+  canImpersonate: boolean;
+  impersonatedRole: RuntimeUser['role'] | null;
+  onImpersonationChange: (role: RuntimeUser['role'] | null) => void;
   onLogout: () => void;
 }) {
   const { state, selectedClientId, selectedClient, isPlatformContext, canSelectPlatform, selectClient, platformUser } = usePlatform();
@@ -309,8 +312,8 @@ function AuthenticatedApp({
   }, [sidebarExpanded]);
 
   useEffect(() => {
-    if (selectedClientId !== abcTestClientId && abcPreviewRole) onPreviewRoleChange(null);
-  }, [abcPreviewRole, onPreviewRoleChange, selectedClientId]);
+    if (selectedClientId !== abcTestClientId && impersonatedRole) onImpersonationChange(null);
+  }, [impersonatedRole, onImpersonationChange, selectedClientId]);
 
   return (
     <div className="app-shell min-h-screen bg-background text-white">
@@ -417,8 +420,8 @@ function AuthenticatedApp({
                 />
                 <p className="hidden truncate text-xs text-slate-400 sm:block">{isPlatformContext ? 'Platform Context · USD' : `${selectedClient?.clientId} · ${selectedClient?.currency}`}</p>
               </div>
-              {selectedClientId === abcTestClientId ? (
-                <AbcRolePreviewSwitcher value={abcPreviewRole ?? user.role} onChange={onPreviewRoleChange} />
+              {selectedClientId === abcTestClientId && canImpersonate ? (
+                <SuperAdminImpersonationAccess value={impersonatedRole ?? user.role} onChange={onImpersonationChange} />
               ) : null}
             </div>
             <div className="flex items-center gap-3">
