@@ -101,6 +101,7 @@ function platformRoleToRuntimeRole(platformUser: PlatformUser): RuntimeUser['rol
   if (roles.some((role) => role.includes('operator') || role.includes('technician'))) return 'operator';
   if (roles.some((role) => role.includes('auditor'))) return 'auditor';
   if (roles.some((role) => role.includes('quality') || role.includes('qa'))) return 'qa_tester';
+  if (roles.some((role) => role.includes('custom'))) return 'custom';
   return 'user';
 }
 
@@ -108,7 +109,10 @@ function getPlatformUsersForImpersonation(): PlatformUser[] {
   try {
     const savedState = localStorage.getItem('metam.platform.demo.v1');
     const state = savedState ? JSON.parse(savedState) as PlatformState : initialPlatformState;
-    return state.users;
+    const usersByEmail = new Map<string, PlatformUser>();
+    state.users.forEach((user) => usersByEmail.set(user.email.toLowerCase(), user));
+    initialPlatformState.users.forEach((user) => usersByEmail.set(user.email.toLowerCase(), user));
+    return Array.from(usersByEmail.values());
   } catch {
     return initialPlatformState.users;
   }
