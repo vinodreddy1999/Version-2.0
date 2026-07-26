@@ -26,7 +26,8 @@ import { canAccessModule, canAccessPage, canAccessSection, firstAllowedPath } fr
 import { apiConfig, backend } from '../services/api';
 import type { RuntimeUser } from '../types';
 import { PlatformProvider, usePlatform } from '../platform/PlatformContext';
-import type { PlatformClient } from '../platform/types';
+import { initialPlatformState } from '../platform/data';
+import type { PlatformClient, PlatformState, PlatformUser } from '../platform/types';
 
 const AdminCenterPage = lazy(() => import('../pages/AdminCenterPage').then((module) => ({ default: module.AdminCenterPage })));
 const DataHubPage = lazy(() => import('../pages/DataHubPage').then((module) => ({ default: module.DataHubPage })));
@@ -75,20 +76,6 @@ const platformNavItems = [
 
 const abcTestClientId = 'CLT-000001';
 
-const abcRolePreviewOptions: Array<{ role: RuntimeUser['role']; label: string; email: string; name: string }> = [
-  { role: 'super_admin', label: 'Super Admin', email: 'super@metam.local', name: 'Metam Administrator' },
-  { role: 'account_owner', label: 'Account Owner', email: 'owner.abcmanufacturing@metam.local', name: 'ABC Account Owner' },
-  { role: 'organization_admin', label: 'Organization Admin', email: 'orgadmin.abcmanufacturing@metam.local', name: 'ABC Organization Admin' },
-  { role: 'admin', label: 'Company Admin', email: 'admin.abcmanufacturing@metam.local', name: 'ABC Admin' },
-  { role: 'team_manager', label: 'Team Manager', email: 'manager.abcmanufacturing@metam.local', name: 'ABC Manager' },
-  { role: 'supervisor', label: 'Supervisor', email: 'supervisor.abcmanufacturing@metam.local', name: 'ABC Supervisor' },
-  { role: 'operator', label: 'Operator', email: 'operator.abcmanufacturing@metam.local', name: 'ABC Operator' },
-  { role: 'auditor', label: 'Auditor', email: 'auditor.abcmanufacturing@metam.local', name: 'ABC Auditor' },
-  { role: 'qa_tester', label: 'QA Tester', email: 'qa.abcmanufacturing@metam.local', name: 'ABC QA Tester' },
-  { role: 'custom', label: 'Custom User', email: 'custom.abcmanufacturing@metam.local', name: 'ABC Custom User' },
-  { role: 'user', label: 'Standard User', email: 'viewer.abcmanufacturing@metam.local', name: 'ABC Viewer' },
-];
-
 const rolePermissions: Record<RuntimeUser['role'], string[]> = {
   super_admin: ['platform.super_admin', 'platform.admin', 'account.override', 'organization.override', 'team.override', 'users.manage', 'roles.manage', 'data.write', 'data.read', 'audit.read', 'data.export', 'data.delete', 'approval.write'],
   account_owner: ['account.override', 'organization.override', 'team.override', 'users.manage', 'roles.manage', 'data.write', 'data.read', 'audit.read', 'data.export', 'approval.write'],
@@ -103,20 +90,48 @@ const rolePermissions: Record<RuntimeUser['role'], string[]> = {
   user: ['data.read'],
 };
 
-function buildImpersonatedAbcUser(baseUser: RuntimeUser, role: RuntimeUser['role'] | null): RuntimeUser {
-  const preview = baseUser.role === 'super_admin' ? abcRolePreviewOptions.find((item) => item.role === role) : null;
-  if (!preview) return baseUser;
+function platformRoleToRuntimeRole(platformUser: PlatformUser): RuntimeUser['role'] {
+  const roles = platformUser.roles.map((role) => role.toLowerCase());
+  if (roles.some((role) => role.includes('super'))) return 'super_admin';
+  if (roles.some((role) => role.includes('account owner'))) return 'account_owner';
+  if (roles.some((role) => role.includes('organization'))) return 'organization_admin';
+  if (roles.some((role) => role.includes('company admin') || role === 'admin')) return 'admin';
+  if (roles.some((role) => role.includes('manager'))) return 'team_manager';
+  if (roles.some((role) => role.includes('supervisor'))) return 'supervisor';
+  if (roles.some((role) => role.includes('operator') || role.includes('technician'))) return 'operator';
+  if (roles.some((role) => role.includes('auditor'))) return 'auditor';
+  if (roles.some((role) => role.includes('quality') || role.includes('qa'))) return 'qa_tester';
+  return 'user';
+}
+
+function getPlatformUsersForImpersonation(): PlatformUser[] {
+  try {
+    const savedState = localStorage.getItem('metam.platform.demo.v1');
+    const state = savedState ? JSON.parse(savedState) as PlatformState : initialPlatformState;
+    return state.users;
+  } catch {
+    return initialPlatformState.users;
+  }
+}
+
+function buildImpersonatedAbcUser(baseUser: RuntimeUser, impersonatedEmail: string | null): RuntimeUser {
+  if (baseUser.role !== 'super_admin' || !impersonatedEmail) return baseUser;
+  const platformUser = getPlatformUsersForImpersonation().find(
+    (user) => user.email.toLowerCase() === impersonatedEmail.toLowerCase() && user.clientId === abcTestClientId,
+  );
+  if (!platformUser) return baseUser;
+  const role = platformRoleToRuntimeRole(platformUser);
   return {
     ...baseUser,
-    id: `abc-preview-${preview.role}`,
-    company_id: preview.role === 'super_admin' ? null : 'company-abc-manufacturing',
-    plant_id: preview.role === 'super_admin' ? null : 'plant-abc-manufacturing-001',
-    email: preview.email,
-    name: preview.name,
-    role: preview.role,
-    permissions: rolePermissions[preview.role],
+    id: platformUser.userId,
+    company_id: 'company-abc-manufacturing',
+    plant_id: platformUser.plant && platformUser.plant !== 'All Plants' ? `plant-abc-${platformUser.plant.toLowerCase().replace(/[^a-z0-9]+/g, '-')}` : null,
+    email: platformUser.email,
+    name: platformUser.fullName,
+    role,
+    permissions: rolePermissions[role],
     demo_read_only: false,
-    demo_role: preview.role,
+    demo_role: role,
   };
 }
 
@@ -207,24 +222,42 @@ function ClientContextSelector({
 
 function SuperAdminImpersonationAccess({
   value,
+  activeName,
   onChange,
+  onBack,
 }: {
-  value: RuntimeUser['role'];
-  onChange: (role: RuntimeUser['role'] | null) => void;
+  value: string;
+  activeName?: string;
+  onChange: (email: string | null) => void;
+  onBack: () => void;
 }) {
+  const abcUsers = getPlatformUsersForImpersonation().filter((user) => user.clientId === abcTestClientId && user.status === 'Active');
   return (
-    <label className="hidden min-w-[220px] lg:block">
-      <span className="mb-1 block text-[10px] font-semibold uppercase tracking-[0.16em] text-cyan-200">Impersonation access</span>
+    <div className="hidden min-w-[300px] lg:block">
+      <div className="mb-1 flex items-center justify-between gap-3">
+        <span className="block text-[10px] font-semibold uppercase tracking-[0.16em] text-cyan-200">Impersonate by email</span>
+        {value ? (
+          <button
+            type="button"
+            className="text-[10px] font-semibold uppercase tracking-[0.12em] text-amber-200 hover:text-amber-100"
+            onClick={onBack}
+          >
+            Back to my profile
+          </button>
+        ) : null}
+      </div>
       <select
         className="form-input w-full py-2 text-sm"
         value={value}
-        onChange={(event) => onChange(event.target.value as RuntimeUser['role'])}
+        onChange={(event) => onChange(event.target.value || null)}
       >
-        {abcRolePreviewOptions.map((item) => (
-          <option key={item.role} value={item.role}>{item.label}</option>
+        <option value="">Select user email...</option>
+        {abcUsers.map((item) => (
+          <option key={item.userId} value={item.email}>{item.email} - {item.fullName}</option>
         ))}
       </select>
-    </label>
+      {value ? <p className="mt-1 truncate text-xs text-amber-200">Acting as {activeName ?? value}</p> : null}
+    </div>
   );
 }
 
@@ -232,7 +265,7 @@ export function App() {
   const baseUrl = useMemo(() => apiConfig.baseUrl, []);
   const [sessionVersion, setSessionVersion] = useState(0);
   const [passwordPromptSkippedFor, setPasswordPromptSkippedFor] = useState<string | null>(null);
-  const [impersonatedRole, setImpersonatedRole] = useState<RuntimeUser['role'] | null>(null);
+  const [impersonatedEmail, setImpersonatedEmail] = useState<string | null>(null);
   const session = useQuery({
     queryKey: ['runtime-session', sessionVersion],
     queryFn: backend.currentUser,
@@ -254,7 +287,7 @@ export function App() {
   }
 
   const user = session.data;
-  const effectiveUser = buildImpersonatedAbcUser(user, impersonatedRole);
+  const effectiveUser = buildImpersonatedAbcUser(user, impersonatedEmail);
   const shouldShowPasswordPrompt = !user.demo_read_only && (user.force_password_change || user.password_expiry_warning) && passwordPromptSkippedFor !== user.id;
   if (shouldShowPasswordPrompt) {
     return (
@@ -269,14 +302,14 @@ export function App() {
     );
   }
   return (
-    <PlatformProvider runtimeUser={effectiveUser}>
+    <PlatformProvider key={effectiveUser.email} runtimeUser={effectiveUser}>
       <AuthenticatedApp
         user={effectiveUser}
         canImpersonate={user.role === 'super_admin'}
-        impersonatedRole={impersonatedRole}
-        onImpersonationChange={setImpersonatedRole}
+        impersonatedEmail={impersonatedEmail}
+        onImpersonationChange={setImpersonatedEmail}
         onLogout={() => {
-          setImpersonatedRole(null);
+          setImpersonatedEmail(null);
           setSessionVersion((value) => value + 1);
         }}
       />
@@ -287,14 +320,14 @@ export function App() {
 function AuthenticatedApp({
   user,
   canImpersonate,
-  impersonatedRole,
+  impersonatedEmail,
   onImpersonationChange,
   onLogout,
 }: {
   user: RuntimeUser;
   canImpersonate: boolean;
-  impersonatedRole: RuntimeUser['role'] | null;
-  onImpersonationChange: (role: RuntimeUser['role'] | null) => void;
+  impersonatedEmail: string | null;
+  onImpersonationChange: (email: string | null) => void;
   onLogout: () => void;
 }) {
   const { state, selectedClientId, selectedClient, isPlatformContext, canSelectPlatform, selectClient, platformUser } = usePlatform();
@@ -312,8 +345,8 @@ function AuthenticatedApp({
   }, [sidebarExpanded]);
 
   useEffect(() => {
-    if (selectedClientId !== abcTestClientId && impersonatedRole) onImpersonationChange(null);
-  }, [impersonatedRole, onImpersonationChange, selectedClientId]);
+    if (selectedClientId !== abcTestClientId && impersonatedEmail) onImpersonationChange(null);
+  }, [impersonatedEmail, onImpersonationChange, selectedClientId]);
 
   return (
     <div className="app-shell min-h-screen bg-background text-white">
@@ -421,7 +454,12 @@ function AuthenticatedApp({
                 <p className="hidden truncate text-xs text-slate-400 sm:block">{isPlatformContext ? 'Platform Context · USD' : `${selectedClient?.clientId} · ${selectedClient?.currency}`}</p>
               </div>
               {selectedClientId === abcTestClientId && canImpersonate ? (
-                <SuperAdminImpersonationAccess value={impersonatedRole ?? user.role} onChange={onImpersonationChange} />
+                <SuperAdminImpersonationAccess
+                  value={impersonatedEmail ?? ''}
+                  activeName={impersonatedEmail ? user.name : undefined}
+                  onChange={onImpersonationChange}
+                  onBack={() => onImpersonationChange(null)}
+                />
               ) : null}
             </div>
             <div className="flex items-center gap-3">
