@@ -71,7 +71,12 @@ export function WarehouseModulePage({ user }: { user: RuntimeUser }) {
 
   return (
     <div className="space-y-4">
-      <ModuleNavigationTabs items={warehouseNav} dashboardPath="/warehouse" />
+      <ModuleNavigationTabs
+        items={warehouseNav}
+        dashboardPath="/warehouse"
+        moduleName="Warehouse"
+        description="Company-level execution for receiving, putaway, storage, picking, packing, dispatch, utilization, labor, and warehouse risk."
+      />
       <WarehouseSectionContent section={section} />
     </div>
   );

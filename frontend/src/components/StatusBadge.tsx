@@ -29,7 +29,7 @@ export function StatusBadge({ status }: StatusBadgeProps) {
   }[state];
 
   return (
-    <span className={`inline-flex min-h-8 items-center gap-1 rounded-full border px-2.5 py-1 text-caption font-medium ${classes}`}>
+    <span className={`inline-flex min-h-7 items-center gap-1 rounded-md border px-2 py-1 text-caption font-medium ${classes}`}>
       <Icon className="h-3.5 w-3.5" />
       {status}
     </span>

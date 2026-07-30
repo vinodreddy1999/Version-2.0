@@ -68,7 +68,12 @@ export function MaintenanceModulePage({ user }: { user: RuntimeUser }) {
 
   return (
     <div className="space-y-4">
-      <ModuleNavigationTabs items={maintenanceNav} dashboardPath="/maintenance" />
+      <ModuleNavigationTabs
+        items={maintenanceNav}
+        dashboardPath="/maintenance"
+        moduleName="Maintenance"
+        description="Company-level asset reliability, work execution, preventive maintenance, breakdowns, cost, and health."
+      />
       <MaintenanceSectionContent section={section} />
     </div>
   );

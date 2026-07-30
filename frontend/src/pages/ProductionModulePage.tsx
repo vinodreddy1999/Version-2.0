@@ -69,7 +69,12 @@ export function ProductionModulePage({ user }: { user: RuntimeUser }) {
 
   return (
     <div className="space-y-4">
-      <ModuleNavigationTabs items={productionNav} dashboardPath="/production" />
+      <ModuleNavigationTabs
+        items={productionNav}
+        dashboardPath="/production"
+        moduleName="Production"
+        description="Company-level production execution, schedule adherence, output, efficiency, downtime, yield, and scrap."
+      />
       <ProductionSectionContent section={section} />
     </div>
   );

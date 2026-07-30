@@ -10,16 +10,16 @@ export function AccessDeniedState({
   description = 'Your role can sign in successfully, but this section is reserved for broader platform permissions.',
 }: AccessDeniedStateProps) {
   return (
-    <div className="rounded-[28px] border border-amber-200/70 bg-amber-50/90 p-6 shadow-panel">
+    <section className="rounded-xl border border-amber-400/30 bg-amber-500/[0.08] p-5 shadow-panel" role="status">
       <div className="flex items-start gap-4">
-        <div className="rounded-2xl bg-amber-100 p-3 text-amber-700">
+        <div className="rounded-lg border border-amber-400/25 bg-amber-500/10 p-2.5 text-amber-300">
           <LockKeyhole className="h-5 w-5" />
         </div>
         <div>
-          <p className="text-sm font-semibold text-amber-950">{title}</p>
-          <p className="mt-1 text-sm leading-6 text-amber-800">{description}</p>
+          <h2 className="text-sm font-semibold text-amber-100">{title}</h2>
+          <p className="mt-1 text-sm leading-6 text-amber-200/80">{description}</p>
         </div>
       </div>
-    </div>
+    </section>
   );
 }

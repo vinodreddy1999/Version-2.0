@@ -35,6 +35,7 @@ DEFAULT_STATE_KEY = "vinod-48h-live-stream"
 DEFAULT_DURATION_HOURS = 48.0
 DEFAULT_INTERVAL_SECONDS = 10.0
 DEFAULT_BATCH_SIZE = 50
+STREAM_RECORD_ID_PREFIX = "vinod-live-48h-"
 
 MODULE_STREAMS = [
     ("inventory", "inventory_live_snapshot", "Live inventory signal"),
@@ -178,6 +179,25 @@ def mark_state(db: Session, state: AppMetadata, status: str, **updates: Any) -> 
     db.commit()
 
 
+def latest_stream_sequence(db: Session) -> int:
+    latest_id = (
+        db.query(ModuleRecord.id)
+        .filter(
+            ModuleRecord.company_id == COMPANY_ID,
+            ModuleRecord.id.like(f"{STREAM_RECORD_ID_PREFIX}%"),
+        )
+        .order_by(ModuleRecord.id.desc())
+        .limit(1)
+        .scalar()
+    )
+    if not latest_id:
+        return 0
+    try:
+        return int(latest_id.removeprefix(STREAM_RECORD_ID_PREFIX))
+    except ValueError:
+        return 0
+
+
 def create_batch_rows(sequence_start: int, batch_size: int) -> list[dict[str, Any]]:
     rows: list[dict[str, Any]] = []
     created_at = db_now()
@@ -192,7 +212,7 @@ def create_batch_rows(sequence_start: int, batch_size: int) -> list[dict[str, An
         record_code = f"VINOD-LIVE-48H-{sequence:012d}"
         rows.append(
             {
-                "id": f"vinod-live-48h-{sequence:012d}",
+                "id": f"{STREAM_RECORD_ID_PREFIX}{sequence:012d}",
                 "tenant_id": TENANT_ID,
                 "company_id": COMPANY_ID,
                 "plant_id": plant_id,
@@ -257,8 +277,9 @@ def write_observability_events(db: Session, batch_number: int, rows_inserted: in
 
 def run_batch(db: Session, state: AppMetadata, batch_size: int, audit_every_batches: int) -> dict[str, Any]:
     payload = dict(state.payload or {})
-    sequence = int(payload.get("sequence") or 0)
-    batch_number = int(payload.get("batches_inserted") or 0) + 1
+    sequence = max(int(payload.get("sequence") or 0), latest_stream_sequence(db))
+    persisted_batch_count = sequence // max(batch_size, 1)
+    batch_number = max(int(payload.get("batches_inserted") or 0), persisted_batch_count) + 1
     sequence_start = sequence + 1
     rows = create_batch_rows(sequence_start, batch_size)
 

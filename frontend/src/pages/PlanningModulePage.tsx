@@ -99,7 +99,12 @@ export function PlanningModulePage({ user }: { user: RuntimeUser }) {
 
   return (
     <div className="space-y-4">
-      <ModuleNavigationTabs items={planningNav} dashboardPath="/planning" />
+      <ModuleNavigationTabs
+        items={planningNav}
+        dashboardPath="/planning"
+        moduleName="Planning"
+        description="Company-wide demand, inventory, production, capacity, material, workforce, and maintenance planning."
+      />
       <PlanningSectionContent section={section} user={user} />
     </div>
   );
