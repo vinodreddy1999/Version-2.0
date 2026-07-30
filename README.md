@@ -2,6 +2,18 @@
 
 Role-by-role documentation can use the passwordless, backend-enforced read-only workflow in [docs/passwordless-role-demo.md](docs/passwordless-role-demo.md).
 
+Version 2 now includes a global-enterprise hierarchy with parallel geography,
+business, legal, and operational dimensions; scoped multi-role assignments;
+central backend authorization; role-generated navigation; global-to-local
+dashboards; time-limited support access; data masking; and enterprise
+administration.
+
+Architecture and delivery documents:
+
+- [Global Enterprise Architecture](docs/GLOBAL_ENTERPRISE_ARCHITECTURE.md)
+- [Global Enterprise Migration and Rollback](docs/GLOBAL_ENTERPRISE_MIGRATION.md)
+- [Global Enterprise Validation](docs/GLOBAL_ENTERPRISE_VALIDATION.md)
+
 This repository is the isolated Version 2.0 track. Version 1 remains in `vinodreddy1999/manufacturing-operations-platform` and can run at the same time.
 
 Version 2.0 first-batch additions:
@@ -19,6 +31,8 @@ Side-by-side URLs after Docker Compose starts:
 - Version 1: `http://localhost:8080`
 - Version 2: `http://localhost:18080`
 - Version 2 API: `http://localhost:18000`
+
+Enterprise administration: `http://localhost:18080/admin/enterprise`
 
 See [Version 2 Deployment](docs/VERSION_2_DEPLOYMENT.md), [Current Role and Route Validation](docs/VERSION_2_CURRENT_VALIDATION.md), [Information Architecture](docs/INFORMATION_ARCHITECTURE_TREE.md), and [Performance Baseline](docs/PERFORMANCE_BASELINE.md).
 

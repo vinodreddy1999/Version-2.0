@@ -8,6 +8,10 @@ const files = {
   dashboards: await readFile(resolve(root, 'src/pages/UnifiedDashboardsPage.tsx'), 'utf8'),
   queryKeys: await readFile(resolve(root, 'src/lib/queryKeys.ts'), 'utf8'),
   platform: await readFile(resolve(root, 'src/platform/PlatformContext.tsx'), 'utf8'),
+  enterpriseAccess: await readFile(resolve(root, 'src/enterprise/EnterpriseAccessContext.tsx'), 'utf8'),
+  enterpriseSelector: await readFile(resolve(root, 'src/enterprise/EnterpriseScopeSelector.tsx'), 'utf8'),
+  enterpriseAdmin: await readFile(resolve(root, 'src/pages/EnterpriseAdminPage.tsx'), 'utf8'),
+  enterpriseGovernance: await readFile(resolve(root, 'src/enterprise/EnterpriseGovernancePanel.tsx'), 'utf8'),
 };
 
 const assertions = [
@@ -19,6 +23,13 @@ const assertions = [
   ['client scope is in query keys', files.queryKeys.includes("['scope', clientScopeToken(clientId)]")],
   ['client switch cancels scoped requests', files.platform.includes('queryClient.cancelQueries')],
   ['client switch removes previous cache', files.platform.includes('queryClient.removeQueries')],
+  ['enterprise scope switch cancels scoped requests', files.enterpriseAccess.includes('queryClient.cancelQueries')],
+  ['enterprise scope switch removes previous cache', files.enterpriseAccess.includes('queryClient.removeQueries')],
+  ['enterprise navigation comes from effective access', files.app.includes('visibleNavigation.items.flatMap')],
+  ['enterprise administration route is protected', files.app.includes('<EnterpriseRoute user={user}')],
+  ['scope selector exposes permitted-scope search', files.enterpriseSelector.includes('Search permitted scopes')],
+  ['enterprise admin supports parallel hierarchy dimensions', files.enterpriseAdmin.includes("'geography' | 'business' | 'legal' | 'operational'")],
+  ['enterprise admin exposes permission explanation', files.enterpriseGovernance.includes('Permission explanation')],
 ];
 
 const failures = assertions.filter(([, passed]) => !passed);

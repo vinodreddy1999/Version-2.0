@@ -10,6 +10,8 @@ from urllib.request import Request, urlopen
 
 
 BASE_URL = os.getenv("BASE_URL", "http://127.0.0.1:8080").rstrip("/")
+SEED_ADMIN_EMAIL = os.getenv("SEED_ADMIN_EMAIL", "enterprise.owner@example-global.local")
+SEED_ADMIN_PASSWORD = os.getenv("SEED_ADMIN_PASSWORD", "Enterprise123!")
 
 
 @dataclass(frozen=True)
@@ -60,7 +62,7 @@ def login() -> str:
     response = request_json(
         "POST",
         "/runtime/auth/login",
-        {"email": "super@metam.local", "password": "SuperAdmin123!"},
+        {"email": SEED_ADMIN_EMAIL, "password": SEED_ADMIN_PASSWORD},
     )
     return response["data"]["access_token"]
 
@@ -259,7 +261,7 @@ def main() -> int:
     health = request_json("GET", "/health")
     print(f"Health: {health['status']}")
     token = login()
-    print("Authenticated as super admin")
+    print(f"Authenticated as authorized enterprise seed owner: {SEED_ADMIN_EMAIL}")
 
     created_users = 0
     existing_users = 0
@@ -284,7 +286,13 @@ def main() -> int:
     batch = time.strftime("%Y%m%d%H%M%S")
     rows = enterprise_records(batch)
     for row in rows:
-        safe_post("/runtime/records", token, row)
+        try:
+            safe_post("/runtime/records", token, row)
+        except RuntimeError as error:
+            raise RuntimeError(
+                f"Record seed failed for module={row['module_key']} "
+                f"company={row['company_id']} code={row['record_code']}"
+            ) from error
 
     analytics = request_json("GET", "/runtime/analytics/summary", token=token)["data"]
     users = request_json("GET", "/runtime/users", token=token)["data"]

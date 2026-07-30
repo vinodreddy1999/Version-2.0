@@ -623,4 +623,12 @@ def seed_platform(db: Session) -> None:
                             },
                         )
                     )
+    # The global-enterprise layer is additive and links the legacy company, plant,
+    # department, user, and module data after those rows have been prepared.
+    from .enterprise_access_seed import seed_enterprise_access
+
+    # SessionLocal disables autoflush, so make the platform rows queryable before
+    # the hierarchy seed links companies, plants, departments, and users.
+    db.flush()
+    seed_enterprise_access(db)
     db.commit()

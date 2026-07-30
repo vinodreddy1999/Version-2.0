@@ -15,8 +15,8 @@ Version 1 and Version 2 use independent Compose projects, networks, ports, image
 V2 images:
 
 ```text
-vinodreddy1999/metam-services-v2-fullstack:2.0.0-beta.4
-vinodreddy1999/metam-services-v2-frontend:2.0.0-beta.4
+vinodreddy1999/metam-services-v2-fullstack:2.0.0-beta.9
+vinodreddy1999/metam-services-v2-frontend:2.0.0-beta.9
 ```
 
 Start V2 without stopping V1:

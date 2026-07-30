@@ -247,8 +247,13 @@ def test_create_company_initializes_module_allocations():
 
 
 def test_generic_module_record_create():
+    headers = runtime_headers(
+        "enterprise.owner@example-global.local",
+        "Enterprise123!",
+    )
     response = client.post(
         "/purchase-orders",
+        headers=headers,
         json={
             "record_code": "PO-1001",
             "name": "Demo purchase order",
@@ -1036,7 +1041,13 @@ def test_planning_ai_command_digital_twin_and_operations_center():
 
 
 def test_runtime_login_users_records_analytics_and_audit():
-    login = client.post("/runtime/auth/login", json={"email": "super@metam.local", "password": "SuperAdmin123!"})
+    login = client.post(
+        "/runtime/auth/login",
+        json={
+            "email": "enterprise.owner@example-global.local",
+            "password": "Enterprise123!",
+        },
+    )
     assert login.status_code == 200
     token = login.json()["data"]["access_token"]
     headers = {"Authorization": f"Bearer {token}"}
@@ -1125,7 +1136,9 @@ def test_passwordless_demo_supports_all_roles_and_enforces_read_only(monkeypatch
     session = client.get("/runtime/auth/me", headers=headers)
     assert session.status_code == 200
     assert session.json()["data"]["demo_read_only"] is True
-    assert client.get("/runtime/records", headers=headers).status_code == 200
+    denied = client.get("/runtime/records", headers=headers)
+    assert denied.status_code == 403
+    assert denied.json()["detail"]["code"] == "support_session_required"
     blocked = client.post(
         "/runtime/records",
         headers=headers,
@@ -1337,7 +1350,13 @@ def test_datahub_company_scoped_upload_and_cloud_source_manifests():
 
 
 def test_versioned_runtime_api_alias():
-    login = client.post("/api/v1/runtime/auth/login", json={"email": "super@metam.local", "password": "SuperAdmin123!"})
+    login = client.post(
+        "/api/v1/runtime/auth/login",
+        json={
+            "email": "enterprise.owner@example-global.local",
+            "password": "Enterprise123!",
+        },
+    )
     assert login.status_code == 200
     token = login.json()["data"]["access_token"]
 

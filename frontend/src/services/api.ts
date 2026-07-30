@@ -33,6 +33,24 @@ import type {
   RuntimeLoginResult,
   RuntimeUser,
 } from '../types';
+import type {
+  DataAccessPolicy,
+  EffectiveAccess,
+  Enterprise,
+  EnterpriseAuditEvent,
+  EnterpriseDashboard,
+  EnterpriseMember,
+  Hierarchy,
+  ModuleEntitlement,
+  OrganizationalRelationship,
+  OrganizationalScope,
+  PermissionDecision,
+  RoleAssignment,
+  RoleTemplate,
+  SupportAccessSession,
+  TemporaryAccess,
+  VisibleNavigation,
+} from '../enterprise/types';
 
 const configuredBaseUrl = import.meta.env.VITE_API_BASE_URL as string | undefined;
 const apiBaseUrl = configuredBaseUrl?.replace(/\/$/, '') ?? '';
@@ -328,6 +346,164 @@ export const backend = {
     window.localStorage.removeItem(tokenStorageKey);
   },
   currentUser: () => getEnvelope<RuntimeUser>('/runtime/auth/me'),
+  enterprises: () => getEnvelope<Enterprise[]>('/enterprises'),
+  enterpriseHierarchy: (enterpriseId: string) => getEnvelope<Hierarchy>(`/enterprises/${enterpriseId}/hierarchy`),
+  enterpriseMembers: (enterpriseId: string) => getEnvelope<EnterpriseMember[]>(`/enterprises/${enterpriseId}/members`),
+  enterpriseDashboard: (
+    enterpriseId: string,
+    scopeType: string,
+    scopeId: string,
+    compareScopeIds: string[] = [],
+  ) => {
+    const search = new URLSearchParams({ scope_type: scopeType, scope_id: scopeId });
+    compareScopeIds.forEach((id) => search.append('compare_scope_ids', id));
+    return getEnvelope<EnterpriseDashboard>(`/enterprises/${enterpriseId}/dashboard?${search.toString()}`);
+  },
+  createHierarchyNode: async (enterpriseId: string, payload: {
+    node_type: string;
+    code: string;
+    name: string;
+    status?: string;
+    source_entity_type?: string;
+    source_entity_id?: string;
+    currency?: string;
+    timezone?: string;
+    metadata_json?: Record<string, unknown>;
+    parent_node_id?: string;
+    dimension?: 'geography' | 'business' | 'legal' | 'operational';
+  }) => {
+    const response = await api.post<ApiEnvelope<OrganizationalScope>>(`/enterprises/${enterpriseId}/hierarchy/nodes`, payload);
+    return response.data.data;
+  },
+  updateHierarchyNode: async (enterpriseId: string, nodeId: string, payload: {
+    name?: string;
+    status?: string;
+    currency?: string;
+    timezone?: string;
+    metadata_json?: Record<string, unknown>;
+  }) => {
+    const response = await api.patch<ApiEnvelope<OrganizationalScope>>(`/enterprises/${enterpriseId}/hierarchy/nodes/${nodeId}`, payload);
+    return response.data.data;
+  },
+  deleteHierarchyNode: async (enterpriseId: string, nodeId: string, reason: string) => {
+    const response = await api.delete<ApiEnvelope<{ id: string; status: string }>>(
+      `/enterprises/${enterpriseId}/hierarchy/nodes/${nodeId}?reason=${encodeURIComponent(reason)}`,
+    );
+    return response.data.data;
+  },
+  createHierarchyRelationship: async (
+    enterpriseId: string,
+    payload: {
+      dimension: OrganizationalRelationship['dimension'];
+      parent_node_id: string;
+      child_node_id: string;
+      reason: string;
+    },
+  ) => {
+    const response = await api.post<ApiEnvelope<OrganizationalRelationship>>(
+      `/enterprises/${enterpriseId}/hierarchy/relationships`,
+      payload,
+    );
+    return response.data.data;
+  },
+  deleteHierarchyRelationship: async (enterpriseId: string, relationshipId: string, reason: string) => {
+    const response = await api.delete<ApiEnvelope<{ id: string; status: string }>>(
+      `/enterprises/${enterpriseId}/hierarchy/relationships/${relationshipId}?reason=${encodeURIComponent(reason)}`,
+    );
+    return response.data.data;
+  },
+  roleTemplates: (enterpriseId: string) => getEnvelope<RoleTemplate[]>(`/enterprises/${enterpriseId}/role-templates`),
+  moduleEntitlements: (enterpriseId: string) =>
+    getEnvelope<ModuleEntitlement[]>(`/enterprises/${enterpriseId}/module-entitlements`),
+  updateModuleEntitlement: async (
+    enterpriseId: string,
+    moduleKey: string,
+    payload: {
+      enabled: boolean;
+      valid_from?: string | null;
+      valid_until?: string | null;
+      rules?: Record<string, unknown>;
+      reason: string;
+    },
+  ) => {
+    const response = await api.patch<ApiEnvelope<ModuleEntitlement>>(
+      `/enterprises/${enterpriseId}/module-entitlements/${encodeURIComponent(moduleKey)}`,
+      payload,
+    );
+    return response.data.data;
+  },
+  dataPolicies: (enterpriseId: string) =>
+    getEnvelope<DataAccessPolicy[]>(`/enterprises/${enterpriseId}/data-policies`),
+  createDataPolicy: async (
+    enterpriseId: string,
+    payload: {
+      resource_pattern: string;
+      classification: string;
+      masked_fields: string[];
+      hidden_fields: string[];
+      reason: string;
+    },
+  ) => {
+    const response = await api.post<ApiEnvelope<DataAccessPolicy>>(
+      `/enterprises/${enterpriseId}/data-policies`,
+      payload,
+    );
+    return response.data.data;
+  },
+  temporaryAccess: (enterpriseId: string) =>
+    getEnvelope<TemporaryAccess[]>(`/enterprises/${enterpriseId}/temporary-access`),
+  supportAccessSessions: (enterpriseId: string) =>
+    getEnvelope<SupportAccessSession[]>(`/enterprises/${enterpriseId}/support-access-sessions`),
+  enterpriseAuditEvents: (enterpriseId: string, limit = 100) =>
+    getEnvelope<EnterpriseAuditEvent[]>(`/enterprises/${enterpriseId}/audit-events?limit=${limit}`),
+  effectiveAccess: (userId: string, enterpriseId: string) =>
+    getEnvelope<EffectiveAccess>(`/users/${userId}/effective-access?enterprise_id=${encodeURIComponent(enterpriseId)}`),
+  availableScopes: (userId: string, enterpriseId: string) =>
+    getEnvelope<OrganizationalScope[]>(`/users/${userId}/available-scopes?enterprise_id=${encodeURIComponent(enterpriseId)}`),
+  enterpriseNavigation: (userId: string, enterpriseId: string) =>
+    getEnvelope<VisibleNavigation>(`/users/${userId}/navigation?enterprise_id=${encodeURIComponent(enterpriseId)}`),
+  roleAssignments: (userId: string, enterpriseId: string) =>
+    getEnvelope<RoleAssignment[]>(`/users/${userId}/role-assignments?enterprise_id=${encodeURIComponent(enterpriseId)}`),
+  createRoleAssignment: async (userId: string, payload: Omit<RoleAssignment, 'id' | 'user_id' | 'status'>) => {
+    const response = await api.post<ApiEnvelope<RoleAssignment>>(`/users/${userId}/role-assignments`, payload);
+    return response.data.data;
+  },
+  revokeRoleAssignment: async (userId: string, assignmentId: string, reason: string) => {
+    const response = await api.delete<ApiEnvelope<{ id: string; status: string }>>(
+      `/users/${userId}/role-assignments/${assignmentId}?reason=${encodeURIComponent(reason)}`,
+    );
+    return response.data.data;
+  },
+  explainPermission: async (userId: string, payload: {
+    enterprise_id: string;
+    scope_type: string;
+    scope_id: string;
+    capability: string;
+    domain?: string;
+    module_key?: string;
+    data_classification?: string;
+    record_owner_id?: string;
+  }) => {
+    const response = await api.post<ApiEnvelope<PermissionDecision>>(`/users/${userId}/permission-explanation`, payload);
+    return response.data.data;
+  },
+  createSupportAccess: async (payload: {
+    enterprise_id: string;
+    reason: string;
+    duration_minutes: number;
+    capabilities: string[];
+    allowed_modules: string[];
+    acting_as_user_id?: string;
+  }) => {
+    const response = await api.post<ApiEnvelope<Record<string, unknown>>>('/support-access-sessions', payload);
+    return response.data.data;
+  },
+  revokeSupportAccess: async (sessionId: string, reason: string) => {
+    const response = await api.delete<ApiEnvelope<{ id: string; revoked_at: string }>>(
+      `/support-access-sessions/${sessionId}?reason=${encodeURIComponent(reason)}`,
+    );
+    return response.data.data;
+  },
   users: (query?: ListQuery) => getEnvelope<RuntimeUser[]>(withListQuery('/runtime/users', query)),
   createUser: async (payload: {
     email: string;

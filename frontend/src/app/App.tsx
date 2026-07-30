@@ -15,6 +15,7 @@ import {
   LayoutDashboard,
   LogOut,
   Menu,
+  Network,
   ShieldCheck,
   ShoppingCart,
   Truck,
@@ -31,6 +32,9 @@ import type { RuntimeUser } from '../types';
 import { PlatformProvider, usePlatform } from '../platform/PlatformContext';
 import { initialPlatformState } from '../platform/data';
 import type { PlatformClient, PlatformState, PlatformUser } from '../platform/types';
+import { EnterpriseAccessProvider, useEnterpriseAccess } from '../enterprise/EnterpriseAccessContext';
+import { EnterpriseContextIndicator } from '../enterprise/EnterpriseContextIndicator';
+import { EnterpriseScopeSelector } from '../enterprise/EnterpriseScopeSelector';
 
 const AdminCenterPage = lazy(() => import('../pages/AdminCenterPage').then((module) => ({ default: module.AdminCenterPage })));
 const DataHubPage = lazy(() => import('../pages/DataHubPage').then((module) => ({ default: module.DataHubPage })));
@@ -49,6 +53,7 @@ const PlatformModulePage = lazy(() => import('../pages/PlatformModulePage').then
 const PerformancePage = lazy(() => import('../pages/PerformancePage').then((module) => ({ default: module.PerformancePage })));
 const FactoryPulsePage = lazy(() => import('../pages/FactoryPulsePage').then((module) => ({ default: module.FactoryPulsePage })));
 const UnifiedDashboardsPage = lazy(() => import('../pages/UnifiedDashboardsPage').then((module) => ({ default: module.UnifiedDashboardsPage })));
+const EnterpriseAdminPage = lazy(() => import('../pages/EnterpriseAdminPage').then((module) => ({ default: module.EnterpriseAdminPage })));
 
 const navItems = [
   { to: '/workspace/dashboards', label: 'Dashboards', icon: Gauge, section: 'dashboard' as const },
@@ -75,10 +80,83 @@ const platformNavItems = [
   { to: '/platform', label: 'Platform', icon: LayoutDashboard },
   { to: '/workspace/dashboards', label: 'Dashboards', icon: Gauge },
   { to: '/admin', label: 'Admin', icon: ShieldCheck },
+  { to: '/admin/enterprise', label: 'Enterprise', icon: Network },
   { to: '/data-hub', label: 'Data Hub', icon: DatabaseZap },
   { to: '/factorypulse', label: 'FactoryPulse', icon: Factory },
   { to: '/admin/performance', label: 'Performance', icon: Activity },
 ];
+
+const moduleKeyByName: Record<string, string> = {
+  Planning: 'planning',
+  Inventory: 'inventory',
+  Warehouse: 'warehouse',
+  Production: 'production',
+  Maintenance: 'maintenance',
+  Quality: 'quality',
+  Procurement: 'procurement',
+  'Sales & Distribution': 'sales',
+  'Costing & Profitability': 'costing',
+  Compliance: 'compliance',
+  'Customer Portal': 'customer-portal',
+  'Supplier Portal': 'supplier-portal',
+  'Reports & Analytics': 'reports',
+  'Document Management': 'documents',
+};
+
+const enterpriseNavigationMap: Record<string, { to: string; icon: typeof Gauge; moduleName?: string }> = {
+  'Enterprise Overview': { to: '/workspace/dashboards/global-executive', icon: Gauge },
+  'Global Operations': { to: '/workspace/dashboards/global-operations', icon: Factory },
+  'Global Network': { to: '/admin/enterprise', icon: Network },
+  'Regional Performance': { to: '/workspace/dashboards/regional', icon: Gauge },
+  'Country Performance': { to: '/workspace/dashboards/country', icon: Gauge },
+  'Business Units': { to: '/workspace/dashboards/business-unit', icon: Factory },
+  'Plant Network': { to: '/workspace/dashboards/multi-site', icon: Factory },
+  'Quality & Compliance': { to: '/workspace/dashboards/global-quality', icon: ShieldCheck, moduleName: 'Quality' },
+  'Supply Chain': { to: '/workspace/dashboards/global-supply-chain', icon: ShoppingCart, moduleName: 'Procurement' },
+  'Maintenance & Reliability': { to: '/workspace/dashboards/global-maintenance', icon: Wrench, moduleName: 'Maintenance' },
+  'Cost & Profitability': { to: '/costing', icon: Activity, moduleName: 'Costing & Profitability' },
+  'People & Capability': { to: '/workspace/dashboards/people', icon: BadgeCheck },
+  Sustainability: { to: '/compliance', icon: ShieldCheck, moduleName: 'Compliance' },
+  'Enterprise Reports': { to: '/reports', icon: FileText, moduleName: 'Reports & Analytics' },
+  'Global Standards': { to: '/documents', icon: FileText, moduleName: 'Document Management' },
+  'Risk & Actions': { to: '/workspace/dashboards/risks', icon: Activity },
+  'Enterprise Administration': { to: '/admin/enterprise', icon: Network },
+  'Regional Overview': { to: '/workspace/dashboards/regional', icon: Gauge },
+  Countries: { to: '/workspace/dashboards/country', icon: Gauge },
+  Sites: { to: '/workspace/dashboards/multi-site', icon: Factory },
+  Operations: { to: '/operations', icon: Factory },
+  Quality: { to: '/quality', icon: ShieldCheck, moduleName: 'Quality' },
+  Maintenance: { to: '/maintenance', icon: Wrench, moduleName: 'Maintenance' },
+  'Regional Initiatives': { to: '/workspace/dashboards/regional-initiatives', icon: Activity },
+  'Risks & Escalations': { to: '/workspace/dashboards/risks', icon: Activity },
+  Reports: { to: '/reports', icon: FileText, moduleName: 'Reports & Analytics' },
+  'Regional Administration': { to: '/admin/enterprise', icon: Network },
+  'Plant Overview': { to: '/workspace/dashboards/plant-command-center', icon: Gauge },
+  Production: { to: '/production', icon: Factory, moduleName: 'Production' },
+  Planning: { to: '/planning', icon: Gauge, moduleName: 'Planning' },
+  Inventory: { to: '/inventory', icon: Boxes, moduleName: 'Inventory' },
+  Warehouse: { to: '/warehouse', icon: Boxes, moduleName: 'Warehouse' },
+  Procurement: { to: '/procurement', icon: ShoppingCart, moduleName: 'Procurement' },
+  Dispatch: { to: '/sales', icon: Truck, moduleName: 'Sales & Distribution' },
+  'People & Shifts': { to: '/workspace/dashboards/shift', icon: BadgeCheck },
+  'Tasks & Approvals': { to: '/workspace/dashboards/tasks', icon: BadgeCheck },
+  Documents: { to: '/documents', icon: FileText, moduleName: 'Document Management' },
+  'Plant Reports': { to: '/reports', icon: FileText, moduleName: 'Reports & Analytics' },
+  'Plant Administration': { to: '/admin/enterprise', icon: Network },
+  'My Shift': { to: '/workspace/dashboards/frontline', icon: Gauge },
+  'My Work': { to: '/workspace/dashboards/my-work', icon: BadgeCheck },
+  'Production Entry': { to: '/production', icon: Factory, moduleName: 'Production' },
+  Inspections: { to: '/quality', icon: ShieldCheck, moduleName: 'Quality' },
+  'Downtime Reporting': { to: '/maintenance', icon: Wrench, moduleName: 'Maintenance' },
+  'Maintenance Tasks': { to: '/maintenance', icon: Wrench, moduleName: 'Maintenance' },
+  'Issue Reporting': { to: '/quality', icon: ShieldCheck, moduleName: 'Quality' },
+  SOPs: { to: '/documents', icon: FileText, moduleName: 'Document Management' },
+  Training: { to: '/documents', icon: FileText, moduleName: 'Document Management' },
+  Notifications: { to: '/workspace/dashboards/notifications', icon: Activity },
+  'My Profile': { to: '/workspace/dashboards/profile', icon: BadgeCheck },
+  'Purchase Orders': { to: '/supplier-portal', icon: Truck, moduleName: 'Supplier Portal' },
+  Orders: { to: '/customer-portal', icon: Truck, moduleName: 'Customer Portal' },
+};
 
 const abcTestClientId = 'CLT-000001';
 
@@ -320,16 +398,18 @@ export function App() {
   }
   return (
     <PlatformProvider key={effectiveUser.email} runtimeUser={effectiveUser}>
-      <AuthenticatedApp
-        user={effectiveUser}
-        canImpersonate={user.role === 'super_admin'}
-        impersonatedEmail={impersonatedEmail}
-        onImpersonationChange={setImpersonatedEmail}
-        onLogout={() => {
-          setImpersonatedEmail(null);
-          setSessionVersion((value) => value + 1);
-        }}
-      />
+      <EnterpriseAccessProvider runtimeUser={effectiveUser}>
+        <AuthenticatedApp
+          user={effectiveUser}
+          canImpersonate={user.role === 'super_admin'}
+          impersonatedEmail={impersonatedEmail}
+          onImpersonationChange={setImpersonatedEmail}
+          onLogout={() => {
+            setImpersonatedEmail(null);
+            setSessionVersion((value) => value + 1);
+          }}
+        />
+      </EnterpriseAccessProvider>
     </PlatformProvider>
   );
 }
@@ -348,6 +428,7 @@ function AuthenticatedApp({
   onLogout: () => void;
 }) {
   const { state, selectedClientId, selectedClient, isPlatformContext, canSelectPlatform, selectClient, platformUser } = usePlatform();
+  const enterpriseAccess = useEnterpriseAccess();
   const location = useLocation();
   const navigate = useNavigate();
   const [sidebarExpanded, setSidebarExpanded] = useState(() => sessionStorage.getItem('metam-sidebar-expanded') !== 'false');
@@ -356,9 +437,26 @@ function AuthenticatedApp({
     () => ({ user, selectedClient, platformUser, isPlatformContext }),
     [user, selectedClient, platformUser, isPlatformContext],
   );
-  const allowedNavItems = isPlatformContext
+  const legacyAllowedNavItems = isPlatformContext
     ? platformNavItems.filter((item) => canAccessPage(permissionContext, item.to))
     : navItems.filter((item) => canAccessPage(permissionContext, item.to));
+  const generatedEnterpriseNavItems = useMemo(() => {
+    if (!enterpriseAccess.isExplicitAccess || !enterpriseAccess.visibleNavigation) return [];
+    const seen = new Set<string>();
+    return enterpriseAccess.visibleNavigation.items.flatMap((label) => {
+      const definition = enterpriseNavigationMap[label];
+      if (!definition || seen.has(definition.to)) return [];
+      const moduleKey = definition.moduleName ? moduleKeyByName[definition.moduleName] : undefined;
+      if (moduleKey && !enterpriseAccess.canUseModule(moduleKey)) return [];
+      if (
+        definition.to.startsWith('/admin')
+        && !enterpriseAccess.canAny('organization.view', 'organization.manage', 'users.view', 'roles.manage')
+      ) return [];
+      seen.add(definition.to);
+      return [{ ...definition, label, section: definition.to.startsWith('/admin') ? 'admin' as const : 'operations' as const }];
+    });
+  }, [enterpriseAccess]);
+  const allowedNavItems = generatedEnterpriseNavItems.length ? generatedEnterpriseNavItems : legacyAllowedNavItems;
   const allowedFallbackPath = allowedNavItems[0]?.to ?? firstAllowedPath(permissionContext, [...platformNavItems.map((item) => item.to), ...navItems.map((item) => item.to)]);
 
   useEffect(() => {
@@ -383,10 +481,17 @@ function AuthenticatedApp({
   }, [impersonatedEmail, onImpersonationChange, selectedClientId]);
 
   useEffect(() => {
-    if (!canAccessPage(permissionContext, location.pathname)) {
+    const permittedByEnterpriseNavigation = enterpriseAccess.isExplicitAccess && (
+      location.pathname === '/'
+      || allowedNavItems.some((item) => location.pathname === item.to || location.pathname.startsWith(`${item.to}/`))
+    );
+    if (
+      (enterpriseAccess.isExplicitAccess && !permittedByEnterpriseNavigation)
+      || (!enterpriseAccess.isExplicitAccess && !canAccessPage(permissionContext, location.pathname))
+    ) {
       navigate(allowedFallbackPath, { replace: true });
     }
-  }, [allowedFallbackPath, location.pathname, navigate, permissionContext]);
+  }, [allowedFallbackPath, allowedNavItems, enterpriseAccess.isExplicitAccess, location.pathname, navigate, permissionContext]);
 
   return (
     <div className="app-shell min-h-screen bg-background text-white">
@@ -498,24 +603,27 @@ function AuthenticatedApp({
               >
                 <Menu className="h-5 w-5" />
               </button>
-              <div className="min-w-0">
-                <ClientContextSelector
-                  clients={state.clients}
-                  selectedClientId={selectedClientId}
-                  canSelectPlatform={canSelectPlatform}
-                  platformUserClientId={platformUser.clientId}
-                  onSelect={(clientId) => {
-                    selectClient(clientId);
-                    if (clientId === null) {
-                      navigate('/platform');
-                      return;
-                    }
-                    if (location.pathname.startsWith('/platform')) navigate('/');
-                  }}
-                />
-                <p className="hidden truncate text-xs text-slate-400 sm:block">{isPlatformContext ? 'Platform Context · USD' : `${selectedClient?.clientId} · ${selectedClient?.currency}`}</p>
-              </div>
-              {selectedClientId === abcTestClientId && canImpersonate ? (
+              {!enterpriseAccess.isExplicitAccess ? (
+                <div className="min-w-0">
+                  <ClientContextSelector
+                    clients={state.clients}
+                    selectedClientId={selectedClientId}
+                    canSelectPlatform={canSelectPlatform}
+                    platformUserClientId={platformUser.clientId}
+                    onSelect={(clientId) => {
+                      selectClient(clientId);
+                      if (clientId === null) {
+                        navigate('/platform');
+                        return;
+                      }
+                      if (location.pathname.startsWith('/platform')) navigate('/');
+                    }}
+                  />
+                  <p className="hidden truncate text-xs text-slate-400 sm:block">{isPlatformContext ? 'Platform Context · USD' : `${selectedClient?.clientId} · ${selectedClient?.currency}`}</p>
+                </div>
+              ) : null}
+              {enterpriseAccess.activeEnterprise ? <EnterpriseScopeSelector /> : null}
+              {!enterpriseAccess.isExplicitAccess && selectedClientId === abcTestClientId && canImpersonate ? (
                 <SuperAdminImpersonationAccess
                   value={impersonatedEmail ?? ''}
                   activeName={impersonatedEmail ? user.name : undefined}
@@ -546,7 +654,8 @@ function AuthenticatedApp({
 
         <main className="mx-auto w-full max-w-[1920px] px-4 py-6 sm:px-6 2xl:px-8">
           <Breadcrumbs />
-          <div key={selectedClientId ?? 'platform'}>
+          <EnterpriseContextIndicator />
+          <div key={`${selectedClientId ?? 'platform'}:${enterpriseAccess.activeEnterpriseId ?? 'none'}:${enterpriseAccess.activeScope?.id ?? 'none'}`}>
           <LazyChunkBoundary label="Workspace view">
             <Suspense fallback={<LoadingState label="Loading workspace view" />}>
               <Routes>
@@ -573,9 +682,10 @@ function AuthenticatedApp({
               <Route path="/admin/data-scope" element={<ProtectedRoute user={user} section="admin" fallbackPath={allowedFallbackPath}><AdminCenterPage section="data-scope" user={user} /></ProtectedRoute>} />
               <Route path="/admin/audit" element={<ProtectedRoute user={user} section="admin" fallbackPath={allowedFallbackPath}><AdminCenterPage section="audit" user={user} /></ProtectedRoute>} />
               <Route path="/admin/recommendations" element={<ProtectedRoute user={user} section="admin" fallbackPath={allowedFallbackPath}><AdminCenterPage section="recommendations" user={user} /></ProtectedRoute>} />
-              <Route path="/admin/settings" element={<ProtectedRoute user={user} section="admin" fallbackPath={allowedFallbackPath}><AdminCenterPage section="settings" user={user} /></ProtectedRoute>} />
-              <Route path="/admin/performance" element={<ProtectedRoute user={user} section="admin" fallbackPath={allowedFallbackPath}><PerformancePage /></ProtectedRoute>} />
-              <Route path="/data-hub" element={<ProtectedRoute user={user} section="data-hub" fallbackPath={allowedFallbackPath}><DataHubPage user={user} /></ProtectedRoute>} />
+               <Route path="/admin/settings" element={<ProtectedRoute user={user} section="admin" fallbackPath={allowedFallbackPath}><AdminCenterPage section="settings" user={user} /></ProtectedRoute>} />
+               <Route path="/admin/performance" element={<ProtectedRoute user={user} section="admin" fallbackPath={allowedFallbackPath}><PerformancePage /></ProtectedRoute>} />
+               <Route path="/admin/enterprise" element={<EnterpriseRoute user={user} fallbackPath={allowedFallbackPath}><EnterpriseAdminPage user={user} /></EnterpriseRoute>} />
+               <Route path="/data-hub" element={<ProtectedRoute user={user} section="data-hub" fallbackPath={allowedFallbackPath}><DataHubPage user={user} /></ProtectedRoute>} />
               <Route path="/factorypulse" element={<ProtectedRoute user={user} section="operations" fallbackPath={allowedFallbackPath}><FactoryPulsePage user={user} /></ProtectedRoute>} />
               <Route path="/operations" element={<ProtectedRoute user={user} section="operations" fallbackPath={allowedFallbackPath}><OperationsPage user={user} /></ProtectedRoute>} />
               <Route path="/intelligence" element={<ProtectedRoute user={user} section="intelligence" fallbackPath={allowedFallbackPath}><IntelligencePage /></ProtectedRoute>} />
@@ -615,7 +725,18 @@ function ProtectedRoute({
   fallbackPath: string;
   children: ReactNode;
 }) {
-  if (!canAccessSection(user, section)) {
+  const enterpriseAccess = useEnterpriseAccess();
+  const capabilityMap = {
+    admin: ['organization.view', 'organization.manage', 'users.view', 'roles.manage', 'settings.view'],
+    'data-hub': ['integrations.view', 'integrations.create', 'integrations.update'],
+    operations: ['dashboard.view'],
+    intelligence: ['dashboard.view', 'reports.view'],
+  };
+  if (
+    enterpriseAccess.isExplicitAccess
+      ? !enterpriseAccess.canAny(...capabilityMap[section])
+      : !canAccessSection(user, section)
+  ) {
     return <Navigate to={fallbackPath} replace />;
   }
 
@@ -624,11 +745,28 @@ function ProtectedRoute({
 
 function ModuleRoute({ user, moduleName, fallbackPath, children }: { user: RuntimeUser; moduleName: string; fallbackPath: string; children: ReactNode }) {
   const { selectedClient, platformUser, isPlatformContext } = usePlatform();
+  const enterpriseAccess = useEnterpriseAccess();
+  const moduleKey = moduleKeyByName[moduleName] ?? moduleName.toLowerCase().replace(/[^a-z0-9]+/g, '-');
 
-  if (!canAccessModule({ user, selectedClient, platformUser, isPlatformContext }, moduleName)) {
+  if (
+    enterpriseAccess.isExplicitAccess
+      ? !enterpriseAccess.canUseModule(moduleKey)
+      : !canAccessModule({ user, selectedClient, platformUser, isPlatformContext }, moduleName)
+  ) {
     return <Navigate to={fallbackPath} replace />;
   }
 
+  return children;
+}
+
+function EnterpriseRoute({ user, fallbackPath, children }: { user: RuntimeUser; fallbackPath: string; children: ReactNode }) {
+  const { activeEnterpriseId, canAny } = useEnterpriseAccess();
+  if (
+    user.role !== 'super_admin'
+    && (!activeEnterpriseId || !canAny('organization.view', 'organization.manage', 'roles.manage', 'users.view'))
+  ) {
+    return <Navigate to={fallbackPath} replace />;
+  }
   return children;
 }
 

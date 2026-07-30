@@ -13,6 +13,7 @@ from .auth_router import router as auth_router
 from .core_router import create_module_router, router as core_router
 from .database import Base, SessionLocal, engine, get_db
 from .enterprise import configure_enterprise, enterprise_router
+from .enterprise_access_router import router as enterprise_access_router
 from .metadata_store import first_metadata, list_metadata, upsert_metadata
 from .modules.customer_portal import ai_router as customer_portal_ai_router
 from .modules.customer_portal import router as customer_portal_router
@@ -109,6 +110,8 @@ app.include_router(auth_router)
 app.include_router(runtime_router)
 app.include_router(runtime_router, prefix="/api/v1")
 app.include_router(enterprise_router)
+app.include_router(enterprise_access_router)
+app.include_router(enterprise_access_router, prefix="/api/v1")
 app.include_router(core_router)
 app.include_router(costing_router)
 app.include_router(costing_ai_router)

@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 
 from .audit import audit
 from .database import get_db
+from .enterprise_guards import authorize_record_action, scope_record_query
 from .feature_flags import module_enabled
 from .platform_models import Approval, Company, Department, Document, FeatureFlag, ModuleRecord, Permission, Plant, Role, Task, User
 from .platform_schemas import (
@@ -256,15 +257,39 @@ def view_audit_logs(db: Session = Depends(get_db), _: User = Depends(require_any
 
 def create_module_router(module_key: str, prefix: str) -> APIRouter:
     module_router = APIRouter(prefix=prefix, tags=[module_key])
+    functional_module = (
+        "warehouse"
+        if module_key.startswith("warehouse")
+        else "procurement"
+        if module_key in {"suppliers", "purchase_requisitions", "purchase_orders"}
+        else "production"
+        if module_key in {"products", "bom", "routing", "production_orders", "production_schedules"}
+        else module_key
+    )
 
     @module_router.get("")
-    def list_records(db: Session = Depends(get_db)):
-        return [as_dict(row) for row in db.query(ModuleRecord).filter(ModuleRecord.module_key == module_key).all()]
+    def list_records(actor: User = Depends(current_user), db: Session = Depends(get_db)):
+        access_scope = authorize_record_action(db, actor, module_key=functional_module, action="view")
+        query = scope_record_query(
+            db.query(ModuleRecord).filter(ModuleRecord.module_key == module_key),
+            access_scope,
+        )
+        return [as_dict(row) for row in query.all()]
 
     @module_router.post("")
-    def create_record(request: ModuleRecordRequest, db: Session = Depends(get_db)):
+    def create_record(request: ModuleRecordRequest, actor: User = Depends(current_user), db: Session = Depends(get_db)):
         if not module_enabled(db, request.tenant_id, request.company_id, module_key):
             raise HTTPException(status_code=403, detail=f"{module_key} module is disabled for this company")
+        authorize_record_action(
+            db,
+            actor,
+            module_key=functional_module,
+            action="create",
+            company_id=request.company_id,
+            plant_id=request.plant_id,
+            data_classification=str(request.payload.get("data_classification", "internal")),
+            record_owner_id=request.payload.get("record_owner_id") or request.payload.get("external_organization_id"),
+        )
         row = ModuleRecord(id=str(uuid4()), module_key=module_key, record_type=prefix.strip("/"), **request.model_dump())
         db.add(row)
         db.commit()

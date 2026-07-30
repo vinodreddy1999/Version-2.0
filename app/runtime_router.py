@@ -10,6 +10,7 @@ from sqlalchemy import func, inspect, text
 from sqlalchemy.orm import Session
 
 from .database import engine, get_db
+from .enterprise_guards import authorize_record_action, scope_record_query
 from .platform_models import AuditLog, ModuleRecord, User
 from .runtime_schemas import (
     DemoLoginPayload,
@@ -185,6 +186,8 @@ def current_user(request: Request, db: Session = Depends(get_db)) -> User:
     user = db.get(User, user_id)
     if not user or not user.is_active:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="User is disabled or missing")
+    if payload.get("tenant_id") != user.tenant_id:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token tenant does not match the user")
     user._demo_read_only = bool(payload.get("demo_read_only", False))
     user._demo_role = payload.get("demo_role")
     return user
@@ -476,9 +479,16 @@ def list_records(
     actor: User = Depends(current_user),
     db: Session = Depends(get_db),
 ) -> RuntimeEnvelope:
-    query = db.query(ModuleRecord)
-    if not has_override_scope(actor):
-        query = query.filter(ModuleRecord.company_id == actor.company_id)
+    requested_module = module_key or "reports"
+    access_scope = authorize_record_action(
+        db,
+        actor,
+        module_key=requested_module,
+        action="view",
+        company_id=company_id,
+        plant_id=plant_id,
+    )
+    query = scope_record_query(db.query(ModuleRecord), access_scope)
     if module_key:
         query = query.filter(ModuleRecord.module_key == module_key)
     if company_id:
@@ -493,10 +503,18 @@ def list_records(
 
 
 @router.post("/records", response_model=RuntimeEnvelope)
-def create_record(payload: ModuleRecordCreate, actor: User = Depends(require_any("admin")), db: Session = Depends(get_db)) -> RuntimeEnvelope:
+def create_record(payload: ModuleRecordCreate, actor: User = Depends(current_user), db: Session = Depends(get_db)) -> RuntimeEnvelope:
     target_company_id = payload.company_id or actor.company_id or COMPANY_ID
-    if not has_override_scope(actor) and target_company_id != actor.company_id:
-        raise HTTPException(status_code=403, detail="Cannot create records for another company")
+    authorize_record_action(
+        db,
+        actor,
+        module_key=payload.module_key,
+        action="create",
+        company_id=target_company_id,
+        plant_id=payload.plant_id or actor.plant_id or PLANT_ID,
+        data_classification=str(payload.payload.get("data_classification", "internal")),
+        record_owner_id=payload.payload.get("record_owner_id") or payload.payload.get("external_organization_id"),
+    )
     record = ModuleRecord(
         id=f"record-{uuid4()}",
         tenant_id=TENANT_ID,
@@ -519,12 +537,20 @@ def create_record(payload: ModuleRecordCreate, actor: User = Depends(require_any
 
 
 @router.put("/records/{record_id}", response_model=RuntimeEnvelope)
-def update_record(record_id: str, payload: ModuleRecordUpdate, actor: User = Depends(require_any("admin")), db: Session = Depends(get_db)) -> RuntimeEnvelope:
+def update_record(record_id: str, payload: ModuleRecordUpdate, actor: User = Depends(current_user), db: Session = Depends(get_db)) -> RuntimeEnvelope:
     record = db.get(ModuleRecord, record_id)
     if not record:
         raise HTTPException(status_code=404, detail="Record not found")
-    if not has_override_scope(actor) and record.company_id != actor.company_id:
-        raise HTTPException(status_code=403, detail="Cannot modify records from another company")
+    authorize_record_action(
+        db,
+        actor,
+        module_key=record.module_key,
+        action="update",
+        company_id=record.company_id,
+        plant_id=record.plant_id,
+        data_classification=str((record.payload or {}).get("data_classification", "internal")),
+        record_owner_id=(record.payload or {}).get("record_owner_id") or (record.payload or {}).get("external_organization_id"),
+    )
     old_value = serialize_record(record)
     updates = payload.model_dump(exclude_unset=True)
     for key, value in updates.items():
@@ -536,12 +562,20 @@ def update_record(record_id: str, payload: ModuleRecordUpdate, actor: User = Dep
 
 
 @router.delete("/records/{record_id}", response_model=RuntimeEnvelope)
-def delete_record(record_id: str, actor: User = Depends(require_any("admin")), db: Session = Depends(get_db)) -> RuntimeEnvelope:
+def delete_record(record_id: str, actor: User = Depends(current_user), db: Session = Depends(get_db)) -> RuntimeEnvelope:
     record = db.get(ModuleRecord, record_id)
     if not record:
         raise HTTPException(status_code=404, detail="Record not found")
-    if not has_override_scope(actor) and record.company_id != actor.company_id:
-        raise HTTPException(status_code=403, detail="Cannot delete records from another company")
+    authorize_record_action(
+        db,
+        actor,
+        module_key=record.module_key,
+        action="delete",
+        company_id=record.company_id,
+        plant_id=record.plant_id,
+        data_classification=str((record.payload or {}).get("data_classification", "internal")),
+        record_owner_id=(record.payload or {}).get("record_owner_id") or (record.payload or {}).get("external_organization_id"),
+    )
     old_value = serialize_record(record)
     db.delete(record)
     audit(db, actor, "DELETE", "module_record", record_id, old_value, None)
@@ -557,11 +591,15 @@ def inventory_items(user: User = Depends(current_user), db: Session = Depends(ge
 @router.get("/analytics/summary", response_model=RuntimeEnvelope)
 def analytics_summary(_: User = Depends(current_user), db: Session = Depends(get_db)) -> RuntimeEnvelope:
     actor = _
-    record_query = db.query(ModuleRecord)
-    user_query = db.query(User)
-    if not has_override_scope(actor):
-        record_query = record_query.filter(ModuleRecord.company_id == actor.company_id)
-        user_query = user_query.filter(User.company_id == actor.company_id)
+    access_scope = authorize_record_action(db, actor, module_key="reports", action="view")
+    record_query = scope_record_query(db.query(ModuleRecord), access_scope)
+    user_query = db.query(User).filter(User.tenant_id == actor.tenant_id)
+    if access_scope.company_ids:
+        user_query = user_query.filter(User.company_id.in_(access_scope.company_ids))
+    elif access_scope.plant_ids:
+        user_query = user_query.filter(User.plant_id.in_(access_scope.plant_ids))
+    else:
+        user_query = user_query.filter(User.id == "__no_access__")
     active_users = user_query.filter(User.is_active.is_(True)).count()
     disabled_users = user_query.filter(User.is_active.is_(False)).count()
     by_module = {

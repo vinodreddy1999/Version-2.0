@@ -1173,3 +1173,28 @@ sequenceDiagram
     DB-->>A: Return records and analytics
     A-->>U: Render dashboard, admin and operations views
 ```
+# Global Enterprise Extension
+
+Version 2 adds an enterprise hierarchy and scoped authorization layer above
+the existing company and plant workflows. See:
+
+- [Global Enterprise Architecture](GLOBAL_ENTERPRISE_ARCHITECTURE.md)
+- [Global Enterprise Migration and Rollback](GLOBAL_ENTERPRISE_MIGRATION.md)
+- [Global Enterprise Validation](GLOBAL_ENTERPRISE_VALIDATION.md)
+
+```mermaid
+flowchart LR
+    P["Platform provider"] --> E["Customer enterprise"]
+    E --> G["Geography"]
+    E --> B["Business unit"]
+    E --> L["Legal entity"]
+    G --> PL["Plant"]
+    B --> PL
+    L --> PL
+    PL --> O["Department to team"]
+    U["User assignments"] --> A["Central authorization evaluator"]
+    E --> A
+    PL --> A
+    A --> API["Scoped APIs and queries"]
+    API --> UI["Role-driven navigation and dashboards"]
+```
