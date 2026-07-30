@@ -38,7 +38,7 @@ export function DataTable<T extends Record<string, unknown>>({ rows, columns, em
   return (
     <div className="enterprise-table-frame">
       <div
-        className="max-h-[321px] overflow-auto [scrollbar-color:rgba(34,211,238,0.45)_rgba(255,255,255,0.04)]"
+        className="max-h-[321px] overflow-auto [scrollbar-color:#475569_#0b1726]"
         onScroll={(event) => {
           setScrollPosition(Math.floor(event.currentTarget.scrollTop / 54) + 1);
           if (shouldVirtualize) virtual.onScroll(event);
@@ -48,7 +48,7 @@ export function DataTable<T extends Record<string, unknown>>({ rows, columns, em
           <thead className="enterprise-sticky-header">
             <tr>
               {columns.map((column) => (
-                <th key={String(column.key)} className="whitespace-nowrap px-4 py-3 text-left text-body-sm uppercase text-slate-400">
+                <th key={String(column.key)} className="whitespace-nowrap px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.1em] text-slate-400">
                   {column.label}
                 </th>
               ))}
@@ -63,7 +63,7 @@ export function DataTable<T extends Record<string, unknown>>({ rows, columns, em
             {visibleRows.map((row, rowIndex) => (
               <tr
                 key={getRowKey ? getRowKey(row, startIndex + rowIndex) : stableRowKey(row, startIndex + rowIndex)}
-                className="h-[54px] transition hover:bg-white/[0.04]"
+                className="h-[54px] transition hover:bg-slate-700/20"
                 onMouseEnter={() => setHoverPosition(startIndex + rowIndex + 1)}
                 onMouseLeave={() => setHoverPosition(null)}
               >
@@ -84,7 +84,7 @@ export function DataTable<T extends Record<string, unknown>>({ rows, columns, em
           </tbody>
         </table>
       </div>
-      <div className="flex h-8 items-center border-t border-white/10 bg-[#0d1527] px-3 text-caption font-medium text-cyan-200" aria-live="polite">{Math.min(hoverPosition ?? scrollPosition, rows.length)} of {rows.length}</div>
+      <div className="flex h-8 items-center border-t border-slate-700/50 bg-[#0b1726] px-3 text-caption font-medium text-slate-400" aria-live="polite">{Math.min(hoverPosition ?? scrollPosition, rows.length)} of {rows.length}</div>
     </div>
   );
 }

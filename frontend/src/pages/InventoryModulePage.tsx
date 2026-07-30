@@ -77,7 +77,12 @@ export function InventoryModulePage({ user }: { user: RuntimeUser }) {
 
   return (
     <div className="space-y-4">
-      <ModuleNavigationTabs items={inventoryNav} dashboardPath="/inventory" />
+      <ModuleNavigationTabs
+        items={inventoryNav}
+        dashboardPath="/inventory"
+        moduleName="Inventory"
+        description="Company-wide stock visibility, movement, valuation, traceability, aging, and replenishment risk."
+      />
       <InventorySectionContent section={section} />
     </div>
   );

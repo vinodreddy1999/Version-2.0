@@ -44,7 +44,7 @@ export function Breadcrumbs() {
   if (workspace) crumbs.push({ label: title(workspace), to: `${location.pathname}?workspace=${workspace}` });
 
   return (
-    <nav aria-label="Breadcrumb" className="mb-4 flex min-h-6 flex-wrap items-center gap-1.5 text-xs text-slate-500">
+    <nav aria-label="Breadcrumb" className="mb-5 flex min-h-6 flex-wrap items-center gap-2 text-xs text-slate-500">
       {selectedClient ? <span className="text-slate-400">{selectedClient.clientName}</span> : null}
       {selectedClient ? <ChevronRight aria-hidden="true" className="h-3.5 w-3.5" /> : null}
       {crumbs.map((crumb, index) => {

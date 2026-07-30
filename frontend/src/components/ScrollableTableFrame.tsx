@@ -12,16 +12,16 @@ export function ScrollableTableFrame({ children, count, rowHeight = 54 }: { chil
   }
 
   return (
-    <div className="overflow-x-auto">
+    <div className="overflow-x-auto rounded-lg border border-slate-700/50 bg-[#091523]">
       <div
-        className="max-h-[321px] overflow-auto [scrollbar-color:rgba(34,211,238,0.45)_rgba(255,255,255,0.04)] [&_tbody_tr]:h-[54px] [&_td]:whitespace-nowrap [&_th]:whitespace-nowrap [&_thead]:sticky [&_thead]:top-0 [&_thead]:z-10 [&_thead]:bg-[#0d1527]"
+        className="max-h-[321px] overflow-auto [scrollbar-color:#475569_#0b1726] [&_tbody_tr]:h-[54px] [&_tbody_tr]:transition [&_tbody_tr:hover]:bg-slate-700/20 [&_td]:whitespace-nowrap [&_th]:whitespace-nowrap [&_th]:text-[11px] [&_th]:font-semibold [&_th]:uppercase [&_th]:tracking-[0.1em] [&_thead]:sticky [&_thead]:top-0 [&_thead]:z-10 [&_thead]:bg-[#0b1726]"
         onScroll={(event) => setScrollPosition(Math.floor(event.currentTarget.scrollTop / rowHeight) + 1)}
         onMouseOver={trackRow}
         onMouseLeave={() => setHoverPosition(null)}
       >
         {children}
       </div>
-      <div className="sticky left-0 flex h-8 items-center border-t border-white/10 bg-[#0d1527] px-3 text-xs font-medium text-cyan-200" aria-live="polite">{current} of {count}</div>
+      <div className="sticky left-0 flex h-8 items-center border-t border-slate-700/50 bg-[#0b1726] px-3 text-xs font-medium text-slate-400" aria-live="polite">{current} of {count}</div>
     </div>
   );
 }

@@ -5,6 +5,7 @@ import {
   Activity,
   BadgeCheck,
   Boxes,
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
   DatabaseZap,
@@ -12,11 +13,13 @@ import {
   Factory,
   Gauge,
   LayoutDashboard,
+  LogOut,
   Menu,
   ShieldCheck,
   ShoppingCart,
   Truck,
   Wrench,
+  X,
 } from 'lucide-react';
 
 import { LazyChunkBoundary } from '../components/LazyChunkBoundary';
@@ -169,17 +172,19 @@ function ClientContextSelector({
   const selectedClient = clients.find((client) => client.clientId === selectedClientId);
 
   return (
-    <div className="relative w-[min(260px,72vw)]">
+    <div className="relative w-[min(190px,52vw)] sm:w-[min(260px,72vw)]">
       <button
         type="button"
         className="form-input flex w-full items-center justify-between gap-3 py-1.5 text-left text-sm"
         onClick={() => setOpen((value) => !value)}
+        aria-expanded={open}
+        aria-haspopup="listbox"
       >
         <span className="truncate">{selectedClient?.clientName ?? 'Platform View'}</span>
-        <span className="text-slate-400">v</span>
+        <ChevronDown className={`h-4 w-4 shrink-0 text-slate-400 transition-transform ${open ? 'rotate-180' : ''}`} aria-hidden="true" />
       </button>
       {open ? (
-        <div className="absolute left-0 top-[calc(100%+6px)] z-50 w-[min(360px,86vw)] rounded-2xl border border-cyan-300/25 bg-slate-950/95 p-3 shadow-[0_24px_80px_rgba(0,0,0,0.45)] backdrop-blur-xl">
+        <div className="absolute left-0 top-[calc(100%+6px)] z-50 w-[min(360px,86vw)] rounded-lg border border-slate-600/50 bg-[#0d1929] p-3 shadow-enterprise-dialog">
           <input
             className="form-input w-full py-2 text-sm"
             placeholder="Search clients..."
@@ -191,7 +196,7 @@ function ClientContextSelector({
             {canSelectPlatform && (!normalizedSearch || 'platform view'.includes(normalizedSearch)) ? (
               <button
                 type="button"
-                className={`flex w-full flex-col rounded-xl px-3 py-2 text-left transition ${
+                className={`flex w-full flex-col rounded-lg px-3 py-2 text-left transition ${
                   selectedClientId === null ? 'bg-cyan-400/18 text-white' : 'text-slate-300 hover:bg-white/8 hover:text-white'
                 }`}
                 onClick={() => {
@@ -208,7 +213,7 @@ function ClientContextSelector({
               <button
                 key={client.clientId}
                 type="button"
-                className={`flex w-full flex-col rounded-xl px-3 py-2 text-left transition ${
+                className={`flex w-full flex-col rounded-lg px-3 py-2 text-left transition ${
                   client.clientId === selectedClientId ? 'bg-cyan-400/18 text-white' : 'text-slate-300 hover:bg-white/8 hover:text-white'
                 }`}
                 onClick={() => {
@@ -222,7 +227,7 @@ function ClientContextSelector({
               </button>
             ))}
             {!filteredClients.length && (!canSelectPlatform || normalizedSearch !== 'platform view') ? (
-              <div className="rounded-xl border border-amber-300/20 bg-amber-400/10 p-3 text-sm text-amber-100">No clients matched.</div>
+              <div className="rounded-lg border border-amber-300/20 bg-amber-400/10 p-3 text-sm text-amber-100">No clients matched.</div>
             ) : null}
           </div>
           <div className="mt-2 text-xs text-slate-500">{filteredClients.length} of {availableClients.length} clients</div>
@@ -345,7 +350,8 @@ function AuthenticatedApp({
   const { state, selectedClientId, selectedClient, isPlatformContext, canSelectPlatform, selectClient, platformUser } = usePlatform();
   const location = useLocation();
   const navigate = useNavigate();
-  const [sidebarExpanded, setSidebarExpanded] = useState(() => sessionStorage.getItem('metam-sidebar-expanded') === 'true');
+  const [sidebarExpanded, setSidebarExpanded] = useState(() => sessionStorage.getItem('metam-sidebar-expanded') !== 'false');
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const permissionContext = useMemo(
     () => ({ user, selectedClient, platformUser, isPlatformContext }),
     [user, selectedClient, platformUser, isPlatformContext],
@@ -360,6 +366,19 @@ function AuthenticatedApp({
   }, [sidebarExpanded]);
 
   useEffect(() => {
+    setMobileNavOpen(false);
+  }, [location.pathname]);
+
+  useEffect(() => {
+    if (!mobileNavOpen) return undefined;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [mobileNavOpen]);
+
+  useEffect(() => {
     if (selectedClientId !== abcTestClientId && impersonatedEmail) onImpersonationChange(null);
   }, [impersonatedEmail, onImpersonationChange, selectedClientId]);
 
@@ -371,16 +390,25 @@ function AuthenticatedApp({
 
   return (
     <div className="app-shell min-h-screen bg-background text-white">
+      {mobileNavOpen ? (
+        <button
+          type="button"
+          className="fixed inset-0 z-40 bg-slate-950/80 xl:hidden"
+          aria-label="Close navigation overlay"
+          onClick={() => setMobileNavOpen(false)}
+        />
+      ) : null}
       <aside
-        className={`fixed inset-y-0 left-0 z-30 hidden border-r border-white/10 bg-slate-950/70 backdrop-blur-xl transition-all duration-200 xl:block ${
-          sidebarExpanded ? 'w-64' : 'w-20'
-        }`}
+        className={`fixed inset-y-0 left-0 z-50 flex w-60 flex-col border-r border-slate-700/50 bg-[#07111f] transition-[transform,width] duration-200 xl:z-30 xl:translate-x-0 ${
+          mobileNavOpen ? 'translate-x-0' : '-translate-x-full'
+        } ${sidebarExpanded ? 'xl:w-60' : 'xl:w-[72px]'}`}
+        aria-label="Primary navigation"
       >
-        <div className={`flex h-16 items-center border-b border-white/10 px-4 ${sidebarExpanded ? 'justify-between gap-3' : 'justify-center'}`}>
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-cyan-300/20 bg-cyan-400/10 text-cyan-100">
+        <div className={`flex h-16 shrink-0 items-center border-b border-slate-700/50 px-3 ${sidebarExpanded ? 'gap-3' : 'justify-center'}`}>
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-cyan-400/25 bg-cyan-500/10 text-cyan-100">
             <Boxes className="h-5 w-5" />
           </div>
-          {sidebarExpanded ? (
+          {sidebarExpanded || mobileNavOpen ? (
             <>
               <div className="min-w-0 flex-1">
                 <p className="text-sm font-semibold uppercase tracking-[0.18em] text-cyan-200">METAM</p>
@@ -388,74 +416,87 @@ function AuthenticatedApp({
               </div>
               <button
                 type="button"
-                className="focus-ring rounded-xl border border-white/10 bg-white/8 p-2 text-slate-300 hover:bg-white/12 hover:text-white"
-                aria-label="Hide sidebar names"
+                className="focus-ring ml-auto hidden h-10 w-10 items-center justify-center rounded-lg border border-slate-600/40 text-slate-300 hover:bg-slate-800 hover:text-white xl:inline-flex"
+                aria-label="Collapse sidebar"
                 onClick={() => setSidebarExpanded(false)}
               >
                 <ChevronLeft className="h-4 w-4" />
               </button>
             </>
           ) : null}
+          <button
+            type="button"
+            className="focus-ring ml-auto inline-flex h-11 w-11 items-center justify-center rounded-lg border border-slate-600/40 text-slate-300 hover:bg-slate-800 hover:text-white xl:hidden"
+            aria-label="Close navigation"
+            onClick={() => setMobileNavOpen(false)}
+          >
+            <X className="h-5 w-5" />
+          </button>
         </div>
-        {sidebarExpanded ? (
-          <div className="px-4 pt-4">
-            <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
-              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Signed in</p>
-              <p className="mt-2 truncate text-sm font-semibold text-white">{platformUser.fullName}</p>
-              <p className="mt-1 text-sm text-slate-300">{user.email}</p>
-               <div className="mt-3 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/8 px-3 py-1 text-xs font-semibold uppercase tracking-[0.1em] text-cyan-100">
-                <BadgeCheck className="h-3.5 w-3.5" />
-                 {user.role.replace('_', ' ')}
-               </div>
-               {user.demo_read_only ? <div className="mt-2 text-xs font-semibold uppercase tracking-[0.12em] text-amber-200">Read-only demo</div> : null}
-            </div>
-          </div>
-        ) : (
+        {!sidebarExpanded ? (
           <div className="px-3 pt-4">
             <button
               type="button"
-              className="focus-ring flex w-full items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] p-3 text-cyan-100 hover:bg-white/8"
-              aria-label="Show sidebar names"
+              className="focus-ring mx-auto hidden h-11 w-11 items-center justify-center rounded-lg border border-slate-600/40 text-slate-300 hover:bg-slate-800 hover:text-white xl:flex"
+              aria-label="Expand sidebar"
               onClick={() => setSidebarExpanded(true)}
             >
               <ChevronRight className="h-5 w-5" />
             </button>
           </div>
-        )}
-        <nav className="space-y-1 p-3">
+        ) : null}
+        <nav className="flex-1 space-y-1 overflow-y-auto p-3 [scrollbar-color:#475569_#07111f]">
           {allowedNavItems.map((item) => (
             <NavLink
               key={item.to}
               to={item.to}
               end={item.to === '/'}
-              onClick={() => setSidebarExpanded(false)}
+              onClick={() => setMobileNavOpen(false)}
               className={({ isActive }) =>
-                `group flex items-center rounded-xl px-3 py-2.5 text-sm font-medium transition ${
+                `group relative flex min-h-11 items-center gap-3 rounded-lg px-3 text-sm font-medium transition ${
                   isActive
-                    ? 'border border-cyan-300/20 bg-cyan-400/10 text-white'
-                    : 'text-slate-400 hover:bg-white/[0.06] hover:text-white'
-                } ${sidebarExpanded ? 'gap-3 justify-start' : 'justify-center'}`
+                    ? 'bg-slate-800/80 text-white before:absolute before:left-0 before:top-2 before:bottom-2 before:w-0.5 before:rounded-r before:bg-cyan-400'
+                    : 'text-slate-400 hover:bg-slate-800/55 hover:text-white'
+                } ${sidebarExpanded ? '' : 'xl:justify-center xl:gap-0'}`
               }
               title={sidebarExpanded ? undefined : item.label}
             >
-              <item.icon className="h-4 w-4" />
-              {sidebarExpanded ? item.label : null}
+              <item.icon className="h-[18px] w-[18px] shrink-0" aria-hidden="true" />
+              <span className={sidebarExpanded ? '' : 'xl:hidden'}>{item.label}</span>
             </NavLink>
           ))}
         </nav>
+        <div className="shrink-0 border-t border-slate-700/50 p-3">
+          <div className={`flex items-center gap-3 rounded-lg p-2 ${sidebarExpanded ? '' : 'xl:justify-center'}`}>
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-cyan-400/25 bg-cyan-500/10 text-cyan-200">
+              <BadgeCheck className="h-[18px] w-[18px]" aria-hidden="true" />
+            </div>
+            <div className={`min-w-0 ${sidebarExpanded ? '' : 'xl:hidden'}`}>
+              <p className="truncate text-sm font-semibold text-white">{platformUser.fullName}</p>
+              <p className="truncate text-xs capitalize text-slate-400">{user.role.replace('_', ' ')}</p>
+              {user.demo_read_only ? <p className="mt-0.5 text-xs text-amber-300">Read-only demo</p> : null}
+            </div>
+          </div>
+        </div>
       </aside>
 
-      <div className={`transition-all duration-200 ${sidebarExpanded ? 'xl:pl-64' : 'xl:pl-20'}`}>
-        <header className="sticky top-0 z-20 border-b border-white/10 bg-slate-950/70 backdrop-blur-xl">
-          <div className="flex h-16 items-center justify-between gap-4 px-4 sm:px-6">
-             <div className="flex items-center gap-3">
+      <div className={`transition-[padding] duration-200 ${sidebarExpanded ? 'xl:pl-60' : 'xl:pl-[72px]'}`}>
+        <header className="sticky top-0 z-20 border-b border-slate-700/50 bg-[#091523]">
+          <div className="flex h-16 items-center justify-between gap-2 px-4 sm:gap-4 sm:px-6">
+             <div className="flex min-w-0 items-center gap-2 sm:gap-3">
                {user.demo_read_only ? (
-                 <div className="hidden rounded-full border border-amber-300/25 bg-amber-400/10 px-3 py-1.5 text-xs font-semibold text-amber-100 sm:block">
+                 <div className="hidden rounded-md border border-amber-300/25 bg-amber-400/10 px-3 py-1.5 text-xs font-semibold text-amber-100 md:block">
                    Read-only role demo
                  </div>
                ) : null}
-              <button className="focus-ring rounded-xl border border-white/10 bg-white/8 p-2 text-slate-100 xl:hidden" aria-label="Open navigation">
-                <Menu className="h-4 w-4" />
+              <button
+                type="button"
+                className="focus-ring inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-slate-600/40 text-slate-100 hover:bg-slate-800 xl:hidden"
+                aria-label="Open navigation"
+                aria-expanded={mobileNavOpen}
+                onClick={() => setMobileNavOpen(true)}
+              >
+                <Menu className="h-5 w-5" />
               </button>
               <div className="min-w-0">
                 <ClientContextSelector
@@ -483,39 +524,24 @@ function AuthenticatedApp({
                 />
               ) : null}
             </div>
-            <div className="flex items-center gap-3">
-              <div className="hidden items-center gap-2 rounded-full border border-white/10 bg-white/8 px-3 py-1.5 text-xs text-slate-300 sm:flex">
+            <div className="flex shrink-0 items-center gap-2 sm:gap-3">
+              <div className="hidden items-center gap-2 rounded-lg border border-slate-600/40 px-3 py-1.5 text-xs text-slate-300 md:flex">
                 <Activity className="h-3.5 w-3.5 text-cyan-200" />
                 {allowedNavItems.length} sections
               </div>
               <button
-                className="focus-ring rounded-xl border border-white/10 bg-white/8 px-3 py-2 text-xs font-semibold text-slate-100 hover:bg-white/12"
+                className="focus-ring inline-flex h-11 items-center justify-center gap-2 rounded-lg border border-slate-600/40 px-3 text-xs font-semibold text-slate-100 hover:bg-slate-800"
+                aria-label={user.demo_read_only ? 'Switch role' : 'Sign out'}
                 onClick={() => {
                   backend.logout();
                   onLogout();
                 }}
               >
-                {user.demo_read_only ? 'Switch role' : 'Sign out'}
+                <LogOut className="h-4 w-4" aria-hidden="true" />
+                <span className="hidden sm:inline">{user.demo_read_only ? 'Switch role' : 'Sign out'}</span>
               </button>
             </div>
           </div>
-          <nav className="flex gap-1 overflow-x-auto border-t border-white/10 px-3 py-2 xl:hidden">
-            {allowedNavItems.map((item) => (
-              <NavLink
-                key={item.to}
-                to={item.to}
-                end={item.to === '/'}
-                className={({ isActive }) =>
-                  `flex min-w-max items-center gap-2 rounded-xl px-3 py-2 text-sm ${
-                    isActive ? 'border border-cyan-300/20 bg-cyan-400/10 text-white' : 'text-slate-400'
-                  }`
-                }
-              >
-                <item.icon className="h-4 w-4" />
-                {item.label}
-              </NavLink>
-            ))}
-          </nav>
         </header>
 
         <main className="mx-auto w-full max-w-[1920px] px-4 py-6 sm:px-6 2xl:px-8">

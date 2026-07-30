@@ -4,16 +4,24 @@
 
 :root {
   color-scheme: dark;
-  --background: 224 45% 7%;
+  --background: 213 61% 8%;
   --foreground: 210 40% 98%;
-  --muted: 222 29% 16%;
+  --muted: 215 38% 13%;
   --muted-foreground: 215 20% 72%;
-  --card: 224 38% 12%;
+  --card: 214 51% 11%;
   --card-foreground: 210 40% 98%;
-  --border: 215 28% 24%;
-  --primary: 190 95% 55%;
+  --border: 215 26% 22%;
+  --primary: 188 86% 46%;
   --primary-foreground: 222 47% 11%;
   --destructive: 0 84% 60%;
+
+  --app-background: #081321;
+  --sidebar-background: #07111f;
+  --topbar-background: #091523;
+  --surface-primary: #0d1929;
+  --surface-secondary: #101e30;
+  --surface-input-solid: #091523;
+  --surface-table-header: #0b1726;
 
   --font-enterprise: Inter, "SF Pro Display", "Segoe UI Variable", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   --font-mono-enterprise: "SFMono-Regular", "Cascadia Code", "Roboto Mono", Consolas, monospace;
@@ -58,25 +66,25 @@
 
   --radius-sm: 0.5rem;
   --radius-md: 0.75rem;
-  --radius-lg: 1rem;
-  --radius-xl: 1.5rem;
-  --radius-2xl: 2rem;
+  --radius-lg: 0.875rem;
+  --radius-xl: 0.875rem;
+  --radius-2xl: 1rem;
   --radius-pill: 999px;
 
-  --surface-1: rgba(15, 23, 42, 0.55);
-  --surface-2: rgba(15, 23, 42, 0.72);
-  --surface-3: rgba(2, 6, 23, 0.42);
-  --surface-input: rgba(10, 14, 26, 0.64);
-  --line-subtle: rgba(255, 255, 255, 0.1);
-  --line-muted: rgba(255, 255, 255, 0.08);
+  --surface-1: #0d1929;
+  --surface-2: #101e30;
+  --surface-3: #091523;
+  --surface-input: #091523;
+  --line-subtle: rgba(148, 163, 184, 0.2);
+  --line-muted: rgba(148, 163, 184, 0.14);
   --text-primary: #f8fafc;
   --text-secondary: #cbd5e1;
   --text-tertiary: #94a3b8;
   --text-disabled: #64748b;
   --focus-ring: 0 0 0 3px rgba(79, 172, 254, 0.25);
-  --shadow-panel: 0 12px 36px rgba(2, 6, 23, 0.22);
-  --shadow-dialog: 0 30px 90px rgba(2, 6, 23, 0.42);
-  --motion-fast: 150ms ease;
+  --shadow-panel: 0 1px 2px rgba(2, 6, 23, 0.24);
+  --shadow-dialog: 0 24px 56px rgba(2, 6, 23, 0.48);
+  --motion-fast: 150ms ease-in-out;
   --motion-base: 200ms ease-in-out;
   --z-sticky: 20;
   --z-overlay: 90;
@@ -84,8 +92,7 @@
 }
 
 html {
-  background:
-    linear-gradient(180deg, #08111f 0%, #0f172a 48%, #111827 100%);
+  background: var(--app-background);
   font-size: 16px;
   text-size-adjust: 100%;
 }
@@ -94,7 +101,7 @@ body {
   min-width: 320px;
   margin: 0;
   color: hsl(var(--foreground));
-  background: transparent;
+  background: var(--app-background);
   font-family: var(--font-enterprise);
   font-size: var(--text-body-lg);
   font-weight: var(--weight-regular);
@@ -109,14 +116,7 @@ body {
 }
 
 .app-shell::before {
-  content: "";
-  position: fixed;
-  inset: 0;
-  z-index: -2;
-  background:
-    radial-gradient(circle at 12% 0%, rgba(34, 211, 238, 0.08), transparent 24%),
-    radial-gradient(circle at 92% 5%, rgba(99, 102, 241, 0.08), transparent 22%);
-  pointer-events: none;
+  content: none;
 }
 
 .app-shell::after {
@@ -261,13 +261,15 @@ td {
 .admin-surface select,
 .admin-surface textarea {
   color: #ffffff !important;
-  background: rgba(10, 14, 26, 0.6) !important;
+  background: var(--surface-input-solid) !important;
   border: 1px solid rgba(255, 255, 255, 0.08) !important;
   border-radius: 8px !important;
   box-shadow: none;
   outline: none;
-  backdrop-filter: blur(12px);
-  transition: all 0.2s ease-in-out;
+  transition:
+    border-color var(--motion-base),
+    box-shadow var(--motion-base),
+    background var(--motion-base);
 }
 
 .admin-surface input::placeholder,
@@ -279,7 +281,7 @@ td {
 .admin-surface select:focus,
 .admin-surface textarea:focus {
   border-color: #4facfe !important;
-  box-shadow: 0 0 12px rgba(79, 172, 254, 0.25);
+  box-shadow: var(--focus-ring);
 }
 
 .admin-surface label,
@@ -289,10 +291,9 @@ td {
 }
 
 .admin-surface .bg-slate-50 {
-  background: rgba(10, 14, 26, 0.46) !important;
+  background: var(--surface-secondary) !important;
   border-color: rgba(255, 255, 255, 0.08) !important;
   color: rgba(255, 255, 255, 0.82) !important;
-  backdrop-filter: blur(12px);
 }
 
 .admin-surface .text-muted-foreground {
@@ -312,21 +313,21 @@ select option {
   min-height: 44px;
   font-size: var(--text-body);
   line-height: var(--leading-dense);
-  @apply rounded-xl border border-white/10 bg-slate-950/35 px-3 py-2 text-white outline-none placeholder:text-slate-500 transition focus:border-cyan-300/60 focus:bg-slate-950/55 focus:shadow-[0_0_0_3px_rgba(34,211,238,0.12)];
+  @apply rounded-lg border border-slate-600/40 bg-[#091523] px-3 py-2 text-white outline-none placeholder:text-slate-500 transition focus:border-cyan-400/70 focus:shadow-[0_0_0_3px_rgba(34,211,238,0.12)];
 }
 
 .form-button-primary {
   min-height: 44px;
   font-size: var(--text-body-sm);
   line-height: var(--leading-dense);
-  @apply rounded-xl border border-cyan-300/20 bg-cyan-400/15 px-4 py-2 font-semibold text-cyan-50 transition hover:bg-cyan-400/25 disabled:cursor-not-allowed disabled:opacity-60;
+  @apply rounded-lg border border-cyan-400/30 bg-cyan-500/15 px-4 py-2 font-semibold text-cyan-50 transition hover:bg-cyan-500/25 disabled:cursor-not-allowed disabled:opacity-60;
 }
 
 .form-button-subtle {
   min-height: 44px;
   font-size: var(--text-body-sm);
   line-height: var(--leading-dense);
-  @apply rounded-xl border border-white/10 bg-white/[0.08] px-4 py-2 font-semibold text-slate-100 transition hover:bg-white/[0.12] disabled:cursor-not-allowed disabled:opacity-60;
+  @apply rounded-lg border border-slate-500/30 bg-slate-700/30 px-4 py-2 font-semibold text-slate-100 transition hover:bg-slate-700/55 disabled:cursor-not-allowed disabled:opacity-60;
 }
 
 .enterprise-display-xl {
@@ -351,7 +352,7 @@ select option {
 }
 
 .enterprise-kpi {
-  font-size: clamp(2rem, 1.6rem + 1vw, 2.25rem);
+  font-size: clamp(1.75rem, 1.55rem + 0.55vw, 2.125rem);
   font-weight: var(--weight-bold);
   line-height: var(--leading-heading);
   letter-spacing: var(--tracking-tight);
@@ -388,26 +389,24 @@ select option {
   flex-direction: column;
   justify-content: space-between;
   border: 1px solid var(--line-subtle);
-  border-radius: var(--radius-xl);
+  border-radius: var(--radius-md);
   background: var(--surface-1);
   box-shadow: var(--shadow-panel);
-  backdrop-filter: blur(16px);
 }
 
 .enterprise-dialog {
   border: 1px solid var(--line-subtle);
-  border-radius: var(--radius-xl);
-  background: rgba(9, 18, 37, 0.96);
+  border-radius: var(--radius-lg);
+  background: var(--surface-primary);
   box-shadow: var(--shadow-dialog);
-  backdrop-filter: blur(18px);
 }
 
 .enterprise-table-frame {
   overflow: auto;
   border: 1px solid var(--line-subtle);
-  border-radius: var(--radius-xl);
+  border-radius: var(--radius-md);
   background: var(--surface-3);
-  scrollbar-color: rgba(34, 211, 238, 0.48) rgba(255, 255, 255, 0.04);
+  scrollbar-color: #475569 #0b1726;
 }
 
 .enterprise-table-frame thead,
@@ -415,7 +414,18 @@ select option {
   position: sticky;
   top: 0;
   z-index: var(--z-sticky);
-  background: #0d1527;
+  background: var(--surface-table-header);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }
 
 [dir="rtl"] .app-shell {
