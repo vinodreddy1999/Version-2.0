@@ -367,4 +367,11 @@ export const backend = {
   },
   analytics: () => getEnvelope<RuntimeAnalytics>('/runtime/analytics/summary'),
   auditLogs: (query?: ListQuery) => getEnvelope<AuditLog[]>(withListQuery('/runtime/audit-logs', query)),
+  factoryPulseDashboard: async () => (await api.get<{ data: Record<string, unknown> }>('/factorypulse/dashboard')).data.data,
+  factoryPulseOrders: async () => (await api.get<{ data: Array<Record<string, unknown>> }>('/factorypulse/production-orders')).data.data,
+  factoryPulseDowntime: async () => (await api.get<{ data: Array<Record<string, unknown>> }>('/factorypulse/downtime-events')).data.data,
+  factoryPulseScrap: async () => (await api.get<{ data: Array<Record<string, unknown>> }>('/factorypulse/scrap-events')).data.data,
+  factoryPulseActions: async () => (await api.get<{ data: Array<Record<string, unknown>> }>('/factorypulse/actions')).data.data,
+  factoryPulseProgramme: async () => (await api.get<{ data: Record<string, unknown> }>('/factorypulse/programme')).data.data,
+  factoryPulseKpis: async () => (await api.get<{ data: Array<Record<string, unknown>> }>('/factorypulse/kpi-dictionary')).data.data,
 };
