@@ -5,6 +5,7 @@ import { createPortal } from 'react-dom';
 import { platformApplications, platformModules, platformRoles } from '../platform/data';
 import { usePlatform } from '../platform/PlatformContext';
 import { backend } from '../services/api';
+import { useDismissibleLayer } from '../lib/useDismissibleLayer';
 import type { ClientStatus, CurrencyCode, PlatformAuditLog, PlatformClient, PlatformState, PlatformUser } from '../platform/types';
 import { Panel } from './Panel';
 import { StatusBadge } from './StatusBadge';
@@ -1357,9 +1358,15 @@ function UserAssignmentPanel({ title, users, selectedUserIds, onChange, onExport
 }
 
 function Drawer({ title, description, onClose, children }: { title: string; description: string; onClose: () => void; children: ReactNode }) {
+  const drawerRef = useDismissibleLayer<HTMLElement>({
+    open: true,
+    onDismiss: onClose,
+    lockBodyScroll: true,
+    manageFocus: true,
+  });
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/80 p-4 backdrop-blur-sm">
-      <section className="max-h-[92vh] w-full max-w-5xl overflow-y-auto rounded-2xl border border-white/10 bg-[#091225] p-5 shadow-2xl">
+      <section ref={drawerRef} role="dialog" aria-modal="true" aria-label={title} className="max-h-[92vh] w-full max-w-5xl overflow-y-auto rounded-2xl border border-white/10 bg-[#091225] p-5 shadow-2xl">
         <div className="mb-5 flex items-start justify-between gap-3">
           <div><h3 className="text-lg font-semibold text-white">{title}</h3><p className="text-sm text-slate-400">{description}</p></div>
           <button className="form-button-subtle" onClick={onClose}>Close</button>

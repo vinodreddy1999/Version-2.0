@@ -12,6 +12,10 @@ const files = {
   enterpriseSelector: await readFile(resolve(root, 'src/enterprise/EnterpriseScopeSelector.tsx'), 'utf8'),
   enterpriseAdmin: await readFile(resolve(root, 'src/pages/EnterpriseAdminPage.tsx'), 'utf8'),
   enterpriseGovernance: await readFile(resolve(root, 'src/enterprise/EnterpriseGovernancePanel.tsx'), 'utf8'),
+  dismissibleLayer: await readFile(resolve(root, 'src/lib/useDismissibleLayer.ts'), 'utf8'),
+  dataHub: await readFile(resolve(root, 'src/pages/DataHubPage.tsx'), 'utf8'),
+  platformDashboard: await readFile(resolve(root, 'src/pages/PlatformDashboardPage.tsx'), 'utf8'),
+  rowActions: await readFile(resolve(root, 'src/components/RowActions.tsx'), 'utf8'),
 };
 
 const assertions = [
@@ -30,6 +34,11 @@ const assertions = [
   ['scope selector exposes permitted-scope search', files.enterpriseSelector.includes('Search permitted scopes')],
   ['enterprise admin supports parallel hierarchy dimensions', files.enterpriseAdmin.includes("'geography' | 'business' | 'legal' | 'operational'")],
   ['enterprise admin exposes permission explanation', files.enterpriseGovernance.includes('Permission explanation')],
+  ['dismissible layers close on outside pointer', files.dismissibleLayer.includes("addEventListener('pointerdown'") && files.dismissibleLayer.includes('composedPath')],
+  ['dismissible layers close on Escape', files.dismissibleLayer.includes("event.key !== 'Escape'")],
+  ['Data Hub menus and dialogs use shared dismissal', (files.dataHub.match(/useDismissibleLayer/g) ?? []).length >= 4],
+  ['platform column filters use shared dismissal', files.platformDashboard.includes('const filterRef = useDismissibleLayer')],
+  ['row action dialogs lock background scroll', files.rowActions.includes('lockBodyScroll: true')],
 ];
 
 const failures = assertions.filter(([, passed]) => !passed);

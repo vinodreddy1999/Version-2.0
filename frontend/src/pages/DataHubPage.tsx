@@ -8,6 +8,7 @@ import { LoadingState } from '../components/LoadingState';
 import { Panel } from '../components/Panel';
 import { StatusBadge } from '../components/StatusBadge';
 import { canManagePlatform, canPerformAction, canUseDataHubUploads } from '../lib/rbac';
+import { useDismissibleLayer } from '../lib/useDismissibleLayer';
 import { usePlatform } from '../platform/PlatformContext';
 import type { PlatformClient } from '../platform/types';
 import { backend } from '../services/api';
@@ -305,13 +306,20 @@ function CompanySearchSelect({
 }) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
+  const selectorRef = useDismissibleLayer<HTMLDivElement>({
+    open,
+    onDismiss: () => {
+      setOpen(false);
+      setSearch('');
+    },
+  });
   const activeCompany = companies.find((company) => company.id === selectedCompanyId);
   const normalizedSearch = search.trim().toLowerCase();
   const filteredCompanies = companies.filter((company) =>
     !normalizedSearch || `${company.name} ${company.code}`.toLowerCase().includes(normalizedSearch));
 
   return (
-    <div className="relative mt-3">
+    <div ref={selectorRef} className="relative mt-3">
       <button
         type="button"
         className={`${selectClass} flex w-full items-center justify-between gap-3 text-left`}
@@ -408,13 +416,20 @@ function PlantSearchSelect({
 }) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
+  const selectorRef = useDismissibleLayer<HTMLDivElement>({
+    open,
+    onDismiss: () => {
+      setOpen(false);
+      setSearch('');
+    },
+  });
   const activePlant = plants.find((plant) => plant.plantId === selectedPlantId) ?? plants[0];
   const normalizedSearch = search.trim().toLowerCase();
   const filteredPlants = plants.filter((plant) =>
     !normalizedSearch || `${plant.plantName} ${plant.plantId} ${plant.status}`.toLowerCase().includes(normalizedSearch));
 
   return (
-    <div className="relative mt-3">
+    <div ref={selectorRef} className="relative mt-3">
       <button
         type="button"
         className={`${selectClass} flex w-full items-center justify-between gap-3 text-left`}
@@ -547,6 +562,20 @@ function PowerBiGetDataExperience({
   const [sourceMenuOpen, setSourceMenuOpen] = useState(false);
   const [sourceMenuExpanded, setSourceMenuExpanded] = useState(false);
   const [connectorDialogOpen, setConnectorDialogOpen] = useState(false);
+  const sourceMenuRef = useDismissibleLayer<HTMLDivElement>({
+    open: sourceMenuOpen,
+    onDismiss: () => {
+      setSourceMenuOpen(false);
+      setSourceMenuExpanded(false);
+      setSourceSearch('');
+    },
+  });
+  const connectorDialogRef = useDismissibleLayer<HTMLDivElement>({
+    open: connectorDialogOpen,
+    onDismiss: () => setConnectorDialogOpen(false),
+    lockBodyScroll: true,
+    manageFocus: true,
+  });
   const visibleDestinations = destinationModules.filter((module) => !moduleFilter || module === moduleFilter);
   const liveConnectorGroups = backendCatalog?.groups ?? [];
   const liveConnectorCount = liveConnectorGroups.reduce((total, group) => total + group.connectors.length, 0);
@@ -595,7 +624,7 @@ function PowerBiGetDataExperience({
               </button>
             ))}
           </div>
-          <div className="relative flex flex-wrap gap-2 border-b border-white/10 bg-white/[0.04] p-3">
+          <div ref={sourceMenuRef} className="relative flex flex-wrap gap-2 border-b border-white/10 bg-white/[0.04] p-3">
             <button
               type="button"
               className={`min-w-[92px] rounded-2xl border px-3 py-3 text-center text-sm transition ${sourceMenuOpen ? 'border-cyan-300/35 bg-cyan-400/14 text-white' : 'border-white/10 bg-white/[0.04] text-slate-200 hover:bg-white/8'}`}
@@ -1028,7 +1057,7 @@ function PowerBiGetDataExperience({
       </div>
       {connectorDialogOpen ? (
         <div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/75 p-4 backdrop-blur-md" role="dialog" aria-modal="true" aria-label={`${selectedSource.label} connector`}>
-          <div className="max-h-[92vh] w-full max-w-5xl overflow-auto rounded-[28px] border border-white/10 bg-slate-950 shadow-[0_28px_90px_rgba(0,0,0,0.65)] [scrollbar-color:rgba(34,211,238,0.45)_rgba(255,255,255,0.04)]">
+          <div ref={connectorDialogRef} className="max-h-[92vh] w-full max-w-5xl overflow-auto rounded-[28px] border border-white/10 bg-slate-950 shadow-[0_28px_90px_rgba(0,0,0,0.65)] [scrollbar-color:rgba(34,211,238,0.45)_rgba(255,255,255,0.04)]">
             <div className="sticky top-0 z-10 flex items-start justify-between gap-4 border-b border-white/10 bg-slate-950/95 px-5 py-4 backdrop-blur-xl">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-[0.2em] text-cyan-100">Get Data Connector</p>

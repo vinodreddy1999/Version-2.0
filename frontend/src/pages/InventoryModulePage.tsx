@@ -13,6 +13,7 @@ import { StatCard } from '../components/StatCard';
 import { StatusBadge } from '../components/StatusBadge';
 import { formatCurrency } from '../lib/format';
 import { applyModuleFilters, type ModuleFilterValues } from '../lib/moduleFilters';
+import { useDismissibleLayer } from '../lib/useDismissibleLayer';
 import {
   adjustments,
   agingBuckets,
@@ -256,9 +257,15 @@ function InventoryBarChart({ data, bars }: { data: Array<Record<string, string |
 }
 
 function InventoryFormDrawer({ title, onClose }: { title: string; onClose: () => void }) {
+  const drawerRef = useDismissibleLayer<HTMLElement>({
+    open: true,
+    onDismiss: onClose,
+    lockBodyScroll: true,
+    manageFocus: true,
+  });
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/80 p-4 backdrop-blur-sm">
-      <section className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-2xl border border-white/10 bg-[#091225] p-5 shadow-2xl">
+      <section ref={drawerRef} role="dialog" aria-modal="true" aria-label={title} className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-2xl border border-white/10 bg-[#091225] p-5 shadow-2xl">
         <div className="mb-5 flex items-start justify-between"><div><h3 className="text-lg font-semibold text-white">{title}</h3><p className="text-sm text-slate-400">Draft-only mock form. Critical inventory actions require approval.</p></div><button type="button" className="form-button-subtle" onClick={onClose}>Close</button></div>
         <div className="grid gap-3 md:grid-cols-2">
           <Field label="Item"><select className="form-input mt-1 w-full">{inventoryItems.map((item) => <option key={item.code}>{item.name}</option>)}</select></Field>

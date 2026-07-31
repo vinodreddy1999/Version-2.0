@@ -8,23 +8,33 @@ import { PageHeader } from '../components/PageHeader';
 import { Panel } from '../components/Panel';
 import type { PlatformWorkspace } from '../components/PlatformEmbeddedWorkspace';
 import { StatusBadge } from '../components/StatusBadge';
+import { useDismissibleLayer } from '../lib/useDismissibleLayer';
 import { platformModules } from '../platform/data';
 import { usePlatform } from '../platform/PlatformContext';
 
 const PlatformEmbeddedWorkspace = lazy(() => import('../components/PlatformEmbeddedWorkspace').then((module) => ({ default: module.PlatformEmbeddedWorkspace })));
 
 function ColumnFilter({ label, active, children, width = 'w-64' }: { label: string; active?: boolean; children: ReactNode; width?: string }) {
+  const [open, setOpen] = useState(false);
+  const filterRef = useDismissibleLayer<HTMLDivElement>({ open, onDismiss: () => setOpen(false) });
   return (
-    <details className="group relative">
-      <summary className="flex cursor-pointer list-none items-center gap-2 rounded-md py-1 hover:text-cyan-200">
+    <div ref={filterRef} className="relative">
+      <button
+        type="button"
+        className="flex items-center gap-2 rounded-md py-1 hover:text-cyan-200"
+        onClick={() => setOpen((value) => !value)}
+        aria-expanded={open}
+      >
         <span>{label}</span>
         {active && <span className="h-1.5 w-1.5 rounded-full bg-cyan-300" />}
-        <ChevronDown className="h-3.5 w-3.5 transition-transform group-open:rotate-180" />
-      </summary>
-      <div className={`mt-2 ${width} max-w-full rounded-lg border border-white/10 bg-[#111b30] p-3 normal-case tracking-normal shadow-2xl`}>
-        {children}
-      </div>
-    </details>
+        <ChevronDown className={`h-3.5 w-3.5 transition-transform ${open ? 'rotate-180' : ''}`} />
+      </button>
+      {open ? (
+        <div className={`absolute left-0 top-[calc(100%+8px)] z-50 ${width} max-w-[min(90vw,28rem)] rounded-lg border border-white/10 bg-[#111b30] p-3 normal-case tracking-normal shadow-2xl`}>
+          {children}
+        </div>
+      ) : null}
+    </div>
   );
 }
 

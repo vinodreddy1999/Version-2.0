@@ -13,6 +13,7 @@ import { StatCard } from '../components/StatCard';
 import { StatusBadge } from '../components/StatusBadge';
 import { applyModuleFilters, type ModuleFilterValues } from '../lib/moduleFilters';
 import { getUserDataScope, scopeFilterDefaults, scopeOptions } from '../lib/rbac';
+import { useDismissibleLayer } from '../lib/useDismissibleLayer';
 import { usePlatform } from '../platform/PlatformContext';
 import {
   approvals,
@@ -399,9 +400,15 @@ function PlanningScenarioCard({ scenario }: { scenario: typeof scenarios[number]
 }
 
 function PlanningFormDrawer({ title, onClose }: { title: string; onClose: () => void }) {
+  const drawerRef = useDismissibleLayer<HTMLElement>({
+    open: true,
+    onDismiss: onClose,
+    lockBodyScroll: true,
+    manageFocus: true,
+  });
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/80 p-4 backdrop-blur-sm">
-      <section className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-2xl border border-white/10 bg-[#091225] p-5 shadow-2xl">
+      <section ref={drawerRef} role="dialog" aria-modal="true" aria-label={title} className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-2xl border border-white/10 bg-[#091225] p-5 shadow-2xl">
         <div className="mb-5 flex items-start justify-between">
           <div>
             <h3 className="text-lg font-semibold text-white">{title}</h3>

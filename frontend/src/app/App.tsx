@@ -27,6 +27,7 @@ import { LazyChunkBoundary } from '../components/LazyChunkBoundary';
 import { Breadcrumbs } from '../components/Breadcrumbs';
 import { LoadingState } from '../components/LoadingState';
 import { canAccessModule, canAccessPage, canAccessSection, firstAllowedPath } from '../lib/rbac';
+import { useDismissibleLayer } from '../lib/useDismissibleLayer';
 import { apiConfig, backend } from '../services/api';
 import type { RuntimeUser } from '../types';
 import { PlatformProvider, usePlatform } from '../platform/PlatformContext';
@@ -243,6 +244,13 @@ function ClientContextSelector({
 }) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
+  const selectorRef = useDismissibleLayer<HTMLDivElement>({
+    open,
+    onDismiss: () => {
+      setOpen(false);
+      setSearch('');
+    },
+  });
   const availableClients = clients.filter((client) => canSelectPlatform || client.clientId === platformUserClientId);
   const normalizedSearch = search.trim().toLowerCase();
   const filteredClients = availableClients.filter((client) =>
@@ -250,7 +258,7 @@ function ClientContextSelector({
   const selectedClient = clients.find((client) => client.clientId === selectedClientId);
 
   return (
-    <div className="relative w-[min(190px,52vw)] sm:w-[min(260px,72vw)]">
+    <div ref={selectorRef} className="relative w-[min(190px,52vw)] sm:w-[min(260px,72vw)]">
       <button
         type="button"
         className="form-input flex w-full items-center justify-between gap-3 py-1.5 text-left text-sm"

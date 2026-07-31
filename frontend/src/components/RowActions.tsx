@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 
 import { ActionNotice } from './ActionNotice';
 import { actionKeyFromLabel, canPerformAction } from '../lib/rbac';
+import { useDismissibleLayer } from '../lib/useDismissibleLayer';
 import { usePlatform } from '../platform/PlatformContext';
 
 type RowActionsProps = {
@@ -149,9 +150,15 @@ function RecordDetailModal({
   details: Record<string, string | number>;
   onClose: () => void;
 }) {
+  const dialogRef = useDismissibleLayer<HTMLElement>({
+    open: true,
+    onDismiss: onClose,
+    lockBodyScroll: true,
+    manageFocus: true,
+  });
   return (
-    <div className="fixed inset-0 z-[120] flex items-center justify-center bg-slate-950/80 p-4 backdrop-blur-sm" onClick={onClose}>
-      <section className="max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-2xl border border-white/10 bg-[#091225] p-5 shadow-2xl" onClick={(event) => event.stopPropagation()}>
+    <div className="fixed inset-0 z-[120] flex items-center justify-center bg-slate-950/80 p-4 backdrop-blur-sm">
+      <section ref={dialogRef} role="dialog" aria-modal="true" aria-label={title} className="max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-2xl border border-white/10 bg-[#091225] p-5 shadow-2xl">
         <div className="mb-4 flex items-start justify-between gap-3">
           <div>
             <h3 className="text-lg font-semibold text-white">{title}</h3>
@@ -185,9 +192,15 @@ function RecordEditModal({
   onClose: () => void;
   onSave: () => void;
 }) {
+  const dialogRef = useDismissibleLayer<HTMLElement>({
+    open: true,
+    onDismiss: onClose,
+    lockBodyScroll: true,
+    manageFocus: true,
+  });
   return (
-    <div className="fixed inset-0 z-[120] flex items-center justify-center bg-slate-950/80 p-4 backdrop-blur-sm" onClick={onClose}>
-      <section className="max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-2xl border border-white/10 bg-[#091225] p-5 shadow-2xl" onClick={(event) => event.stopPropagation()}>
+    <div className="fixed inset-0 z-[120] flex items-center justify-center bg-slate-950/80 p-4 backdrop-blur-sm">
+      <section ref={dialogRef} role="dialog" aria-modal="true" aria-label={title} className="max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-2xl border border-white/10 bg-[#091225] p-5 shadow-2xl">
         <div className="mb-4 flex items-start justify-between gap-3">
           <div>
             <h3 className="text-lg font-semibold text-white">{title}</h3>

@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Check, ChevronDown, GitCompare, Search } from 'lucide-react';
 
+import { useDismissibleLayer } from '../lib/useDismissibleLayer';
 import { useEnterpriseAccess } from './EnterpriseAccessContext';
 
 export function EnterpriseScopeSelector() {
@@ -16,6 +17,13 @@ export function EnterpriseScopeSelector() {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
   const [compare, setCompare] = useState(false);
+  const selectorRef = useDismissibleLayer<HTMLDivElement>({
+    open,
+    onDismiss: () => {
+      setOpen(false);
+      setSearch('');
+    },
+  });
   const normalized = search.trim().toLowerCase();
   const scopes = useMemo(
     () => availableScopes.filter((scope) => !normalized || `${scope.name} ${scope.code} ${scope.node_type}`.toLowerCase().includes(normalized)),
@@ -35,7 +43,7 @@ export function EnterpriseScopeSelector() {
   }
 
   return (
-    <div className="relative min-w-0">
+    <div ref={selectorRef} className="relative min-w-0">
       <button
         type="button"
         className="focus-ring flex min-h-10 max-w-[360px] items-center gap-2 rounded-lg border border-slate-600/45 bg-slate-950/35 px-3 text-left"
