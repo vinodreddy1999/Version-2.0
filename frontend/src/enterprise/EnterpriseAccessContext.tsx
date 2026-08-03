@@ -90,6 +90,18 @@ export function EnterpriseAccessProvider({ runtimeUser, children }: { runtimeUse
   });
   const activeEnterprise = enterprises.find((enterprise) => enterprise.id === activeEnterpriseId);
   const availableScopes = useMemo(() => availableScopesQuery.data ?? [], [availableScopesQuery.data]);
+  const effectiveAssignments = useMemo(
+    () => effectiveAccessQuery.data?.assignments ?? [],
+    [effectiveAccessQuery.data?.assignments],
+  );
+  const canUseEnterpriseRoot = Boolean(
+    activeEnterprise
+    && effectiveAssignments.some(
+      (assignment) =>
+        assignment.scope_type === 'enterprise'
+        && assignment.scope_id === activeEnterprise.id,
+    ),
+  );
 
   useEffect(() => {
     if (!activeEnterprise) {
@@ -99,12 +111,28 @@ export function EnterpriseAccessProvider({ runtimeUser, children }: { runtimeUse
     if (
       activeScopeState
       && (
-        (activeScopeState.type === 'enterprise' && activeScopeState.id === activeEnterprise.id)
+        (
+          activeScopeState.type === 'enterprise'
+          && activeScopeState.id === activeEnterprise.id
+          && canUseEnterpriseRoot
+        )
         || availableScopes.some((scope) => scope.id === activeScopeState.id)
       )
     ) return;
-    setActiveScopeState({ type: 'enterprise', id: activeEnterprise.id, label: activeEnterprise.name });
-  }, [activeEnterprise, activeScopeState, availableScopes]);
+    const assignedScope = effectiveAssignments
+      .map((assignment) => availableScopes.find((scope) => scope.id === assignment.scope_id))
+      .find((scope): scope is OrganizationalScope => Boolean(scope));
+    const firstAllowedScope = assignedScope ?? availableScopes[0];
+    setActiveScopeState(
+      canUseEnterpriseRoot || !firstAllowedScope
+        ? { type: 'enterprise', id: activeEnterprise.id, label: activeEnterprise.name }
+        : {
+            type: firstAllowedScope.node_type,
+            id: firstAllowedScope.id,
+            label: firstAllowedScope.name,
+          },
+    );
+  }, [activeEnterprise, activeScopeState, availableScopes, canUseEnterpriseRoot, effectiveAssignments]);
 
   useEffect(() => {
     localStorage.setItem(

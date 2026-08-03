@@ -226,6 +226,19 @@ ROLE_DEFINITIONS: dict[str, dict] = {
     },
 }
 
+MODULE_DOMAIN_OVERRIDES = {
+    "customer-portal": "sales",
+    "reports": "analytics",
+    "supplier-portal": "procurement",
+}
+
+
+def _domains_for_modules(primary_domain: str, modules: list[str]) -> list[str]:
+    domains = {primary_domain}
+    domains.update(MODULE_DOMAIN_OVERRIDES.get(module, module.replace("-", "_")) for module in modules)
+    return sorted(domains)
+
+
 for key, domain, modules in [
     ("plant_manager", "operations", ["planning", "production", "maintenance", "quality", "inventory", "warehouse", "procurement", "documents", "reports"]),
     ("production_manager", "production", ["planning", "production", "inventory", "quality", "reports"]),
@@ -241,7 +254,7 @@ for key, domain, modules in [
 ]:
     ROLE_DEFINITIONS[key] = {
         "level": key.split("_")[0] if key != "plant_manager" else "plant",
-        "domains": [domain],
+        "domains": _domains_for_modules(domain, modules),
         "modules": modules,
         "capabilities": OPERATIONAL_CAPABILITIES if key.endswith("manager") else OPERATIONAL_CAPABILITIES - {"reports.export"},
         "classifications": ["public", "internal", "confidential"],
@@ -257,7 +270,7 @@ for key, domain, modules in [
 ]:
     ROLE_DEFINITIONS[key] = {
         "level": "frontline",
-        "domains": [domain, "documents"],
+        "domains": _domains_for_modules(domain, modules),
         "modules": modules,
         "capabilities": {
             "dashboard.view",

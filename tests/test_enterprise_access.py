@@ -139,6 +139,32 @@ def test_plant_and_frontline_assignments_do_not_escape_their_scope():
         assert operator_enterprise.allowed is False
 
 
+def test_frontline_runtime_records_resolve_the_authorized_parent_data_boundary():
+    headers = runtime_headers("shift.line4.supervisor@example-global.local")
+    response = client.get("/runtime/records", params={"module_key": "quality"}, headers=headers)
+    assert response.status_code == 200
+    rows = response.json()["data"]
+    assert all(row["module_key"] == "quality" for row in rows)
+    assert all(row.get("plant_id") == "plant-abc-manufacturing-001" for row in rows)
+
+
+def test_frontend_routes_win_only_for_browser_html_navigation():
+    for path in [
+        "/reports",
+        "/quality",
+        "/supplier-portal",
+        "/workspace/dashboards/frontline",
+        "/admin/company",
+    ]:
+        response = client.get(path, headers={"Accept": "text/html"})
+        assert response.status_code == 200
+        assert "text/html" in response.headers["content-type"]
+
+    api_response = client.get("/inventory/reports", headers={"Accept": "application/json"})
+    assert api_response.status_code == 200
+    assert "application/json" in api_response.headers["content-type"]
+
+
 def test_read_only_and_expired_assignments_stop_mutations():
     assert is_effective("active", datetime.utcnow() - timedelta(days=2), datetime.utcnow() - timedelta(seconds=1)) is False
     with SessionLocal() as db:
@@ -186,6 +212,21 @@ def test_external_identity_is_limited_to_its_organization_records():
         )
         assert own.allowed is True
         assert other.allowed is False
+
+
+def test_portal_runtime_records_match_visible_role_navigation():
+    admin_headers = runtime_headers("admin@metam.local", "ChangeMe123!")
+    supplier_headers = runtime_headers("supplier.portal@example-global.local")
+    customer_headers = runtime_headers("customer.portal@example-global.local")
+
+    for module_key in ["customer-portal", "supplier-portal"]:
+        response = client.get("/runtime/records", params={"module_key": module_key}, headers=admin_headers)
+        assert response.status_code == 200
+
+    supplier = client.get("/runtime/records", params={"module_key": "supplier-portal"}, headers=supplier_headers)
+    customer = client.get("/runtime/records", params={"module_key": "customer-portal"}, headers=customer_headers)
+    assert supplier.status_code == 200
+    assert customer.status_code == 200
 
 
 def test_platform_super_admin_requires_explicit_support_session():

@@ -4,14 +4,19 @@ from fastapi import HTTPException, status
 from sqlalchemy.orm import Query, Session
 
 from .authorization import AuthorizationRequest, available_scope_nodes, evaluate_access
-from .enterprise_access_models import Enterprise, EnterpriseMembership
+from .enterprise_access_models import (
+    Enterprise,
+    EnterpriseMembership,
+    OrganizationalNode,
+    OrganizationalRelationship,
+)
 from .platform_models import ModuleRecord, User
 
 
 MODULE_DOMAINS = {
     "reports": "analytics",
     "reporting": "analytics",
-    "supplier-portal": "supply_chain",
+    "supplier-portal": "procurement",
     "customer-portal": "sales",
     "data-hub": "integrations",
     "integrations": "integrations",
@@ -33,6 +38,42 @@ def enterprise_for_user(db: Session, user: User) -> Enterprise:
     if not enterprise:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No active enterprise context is available")
     return enterprise
+
+
+def scope_nodes_with_ancestors(
+    db: Session,
+    enterprise_id: str,
+    nodes: list[OrganizationalNode],
+) -> list[OrganizationalNode]:
+    node_ids = {node.id for node in nodes}
+    frontier = set(node_ids)
+    while frontier:
+        parent_ids = {
+            parent_id
+            for (parent_id,) in db.query(OrganizationalRelationship.parent_node_id)
+            .filter(
+                OrganizationalRelationship.enterprise_id == enterprise_id,
+                OrganizationalRelationship.child_node_id.in_(frontier),
+                OrganizationalRelationship.status == "active",
+            )
+            .all()
+            if parent_id and parent_id not in node_ids
+        }
+        if not parent_ids:
+            break
+        node_ids.update(parent_ids)
+        frontier = parent_ids
+    if not node_ids:
+        return []
+    return (
+        db.query(OrganizationalNode)
+        .filter(
+            OrganizationalNode.enterprise_id == enterprise_id,
+            OrganizationalNode.id.in_(node_ids),
+            OrganizationalNode.status == "active",
+        )
+        .all()
+    )
 
 
 def _deny(decision) -> None:
@@ -76,20 +117,20 @@ def authorize_record_action(
         _deny(decision)
 
     nodes = available_scope_nodes(db, user, enterprise.id)
+    data_boundary_nodes = scope_nodes_with_ancestors(db, enterprise.id, nodes)
     company_ids = {
         row.source_entity_id
-        for row in nodes
+        for row in data_boundary_nodes
         if row.node_type == "legal_entity" and row.source_entity_id
     }
     plant_ids = {
         row.source_entity_id
-        for row in nodes
+        for row in data_boundary_nodes
         if row.node_type == "plant" and row.source_entity_id
     }
     if not company_id and not plant_id:
-        candidates = [row for row in nodes if row.node_type in {"plant", "legal_entity"}]
         allowed = False
-        for node in candidates:
+        for node in nodes:
             candidate = AuthorizationRequest(
                 enterprise_id=enterprise.id,
                 scope_type=node.node_type,
@@ -126,12 +167,7 @@ def authorize_record_action(
 
 
 def scope_record_query(query: Query, scope: RecordAccessScope) -> Query:
-    if scope.company_ids and scope.plant_ids:
-        query = query.filter(
-            (ModuleRecord.company_id.in_(scope.company_ids))
-            | (ModuleRecord.plant_id.in_(scope.plant_ids))
-        )
-    elif scope.plant_ids:
+    if scope.plant_ids:
         query = query.filter(ModuleRecord.plant_id.in_(scope.plant_ids))
     elif scope.company_ids:
         query = query.filter(ModuleRecord.company_id.in_(scope.company_ids))

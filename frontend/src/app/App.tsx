@@ -501,6 +501,22 @@ function AuthenticatedApp({
     }
   }, [allowedFallbackPath, allowedNavItems, enterpriseAccess.isExplicitAccess, location.pathname, navigate, permissionContext]);
 
+  const enterpriseProfilePending = (
+    enterpriseAccess.loading
+    || (
+      user.role !== 'super_admin'
+      && enterpriseAccess.enterprises.length > 0
+      && !enterpriseAccess.activeEnterpriseId
+    )
+  );
+  if (enterpriseProfilePending) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background px-6 text-white">
+        <LoadingState label="Loading your access profile" />
+      </div>
+    );
+  }
+
   return (
     <div className="app-shell min-h-screen bg-background text-white">
       {mobileNavOpen ? (
@@ -677,8 +693,8 @@ function AuthenticatedApp({
               <Route path="/admin/clients/:clientId/health" element={<Navigate to="/platform?workspace=clients" replace />} />
               <Route path="/admin/users" element={<Navigate to="/platform?workspace=users" replace />} />
               <Route path="/admin/users/create" element={<Navigate to="/platform?workspace=users" replace />} />
-              <Route path="/workspace/dashboards" element={<UnifiedDashboardsPage user={user} />} />
-              <Route path="/workspace/dashboards/:dashboardKey" element={<UnifiedDashboardsPage user={user} />} />
+              <Route path="/workspace/dashboards" element={isPlatformContext ? <PlatformDashboardPage /> : <UnifiedDashboardsPage user={user} />} />
+              <Route path="/workspace/dashboards/:dashboardKey" element={isPlatformContext ? <PlatformDashboardPage /> : <UnifiedDashboardsPage user={user} />} />
               <Route path="/dashboard/business-impact" element={<Navigate to="/workspace/dashboards/business-impact" replace />} />
               <Route path="/dashboard/:focus" element={<Navigate to="/workspace/dashboards/executive" replace />} />
               <Route path="/admin" element={<ProtectedRoute user={user} section="admin" fallbackPath={allowedFallbackPath}><Navigate to="/admin/company" replace /></ProtectedRoute>} />

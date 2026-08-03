@@ -15,8 +15,8 @@ Version 1 and Version 2 use independent Compose projects, networks, ports, image
 V2 images:
 
 ```text
-vinodreddy1999/metam-services-v2-fullstack:2.0.0-beta.10
-vinodreddy1999/metam-services-v2-frontend:2.0.0-beta.10
+vinodreddy1999/metam-services-v2-fullstack:2.0.0-beta.11
+vinodreddy1999/metam-services-v2-frontend:2.0.0-beta.11
 ```
 
 Start V2 without stopping V1:
@@ -34,6 +34,23 @@ docker compose down
 Do not use `-v` when stopping unless the V2 database should also be deleted.
 
 Current browser and role evidence is recorded in [Version 2 Current Role and Route Validation](VERSION_2_CURRENT_VALIDATION.md).
+
+## Beta.11 all-role access validation
+
+`2.0.0-beta.11` hardens role-specific navigation and data isolation. Browser
+navigation now serves the React application for every frontend route even when
+an API uses the same path. Scoped users start at their explicitly assigned
+organization node instead of the enterprise root, and plant-level record
+queries no longer broaden to all company records.
+
+Release validation includes:
+
+- 25/25 Playwright role-route checks across every active seeded role plus disabled-user rejection
+- 25/25 Playwright UI regression checks for menu dismissal, collapsed/mobile navigation, and permission-scoped shells
+- redirects for hidden platform, administration, and Data Hub routes
+- lower-level role domain, module, parent plant, supplier portal, and customer portal data-boundary checks
+- frontend lint, 20 source assertions, TypeScript compile, and Vite production build
+- 101 Python regression tests
 
 ## Beta.10 frontend interaction validation
 

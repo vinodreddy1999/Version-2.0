@@ -157,9 +157,15 @@ for _legacy_role, _legacy_capabilities in LEGACY_CAPABILITIES.items():
         "sales",
         "costing",
         "compliance",
+        "customer-portal",
+        "supplier-portal",
         "documents",
         "reports",
         "integrations",
+        "supply_chain",
+        "data-hub",
+        "mobile",
+        "ai_copilot",
     ]:
         _legacy_capabilities.add(f"{_module}.view")
         if _legacy_role in {"account_owner", "organization_admin", "admin", "team_manager", "supervisor", "qa_tester"}:

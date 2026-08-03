@@ -160,10 +160,35 @@ app.include_router(create_module_router("production_orders", "/production-orders
 app.include_router(create_module_router("production_schedules", "/production-schedules"))
 
 frontend_dist = Path(__file__).resolve().parent.parent / "frontend" / "dist"
-SPA_HTML_ROUTES = {
-    "/inventory/reports",
-    "/production/reports",
-}
+SPA_HTML_ROUTE_PREFIXES = (
+    "/platform",
+    "/admin",
+    "/workspace",
+    "/dashboard",
+    "/data-hub",
+    "/factorypulse",
+    "/operations",
+    "/intelligence",
+    "/planning",
+    "/inventory",
+    "/warehouse",
+    "/production",
+    "/maintenance",
+    "/quality",
+    "/procurement",
+    "/sales",
+    "/costing",
+    "/compliance",
+    "/customer-portal",
+    "/supplier-portal",
+    "/reports",
+    "/documents",
+    "/impact",
+)
+
+
+def is_spa_html_route(path: str) -> bool:
+    return any(path == prefix or path.startswith(f"{prefix}/") for prefix in SPA_HTML_ROUTE_PREFIXES)
 
 
 @app.middleware("http")
@@ -171,7 +196,7 @@ async def serve_spa_for_conflicting_html_routes(request: Request, call_next):
     accepts_html = "text/html" in request.headers.get("accept", "")
     if (
         request.method == "GET"
-        and request.url.path in SPA_HTML_ROUTES
+        and is_spa_html_route(request.url.path)
         and accepts_html
         and frontend_dist.exists()
     ):
