@@ -501,6 +501,18 @@ export function DataHubPage() {
       refreshDataHubQueries();
     },
   });
+  const messageLayerRef = useDismissibleLayer<HTMLDivElement>({
+    open: Boolean(message),
+    onDismiss: () => setMessage(''),
+    closeOnPointerOutside: true,
+  });
+  const connectionModalLayerRef = useDismissibleLayer<HTMLDivElement>({
+    open: modalOpen,
+    onDismiss: () => setModalOpen(false),
+    closeOnPointerOutside: false,
+    lockBodyScroll: true,
+    manageFocus: true,
+  });
 
   const loading = companiesQuery.isLoading || connectedSystemsQuery.isLoading || catalogQuery.isLoading;
   const error = companiesQuery.error || connectedSystemsQuery.error || catalogQuery.error;
@@ -735,9 +747,9 @@ export function DataHubPage() {
 	              </div>
 	            </div>
 	          </div>
-	          {message ? (
-	            <div className="mt-4 rounded-2xl border border-cyan-300/20 bg-cyan-400/[0.08] p-4 text-sm leading-6 text-cyan-50">{message}</div>
-	          ) : null}
+          {message ? (
+            <div ref={messageLayerRef} className="mt-4 rounded-2xl border border-cyan-300/20 bg-cyan-400/[0.08] p-4 text-sm leading-6 text-cyan-50">{message}</div>
+          ) : null}
 	        </main>
       </section>
 
@@ -765,7 +777,8 @@ export function DataHubPage() {
       </LazyChunkBoundary>
 
       {modalOpen ? (
-        <LazyChunkBoundary label="Data source setup">
+        <div ref={connectionModalLayerRef}>
+          <LazyChunkBoundary label="Data source setup">
           <Suspense fallback={<LoadingState label="Loading source setup" />}>
             <DataHubConnectionModal
               source={selectedSource}
@@ -786,7 +799,8 @@ export function DataHubPage() {
               onSave={() => saveConnectionMutation.mutate()}
             />
           </Suspense>
-        </LazyChunkBoundary>
+          </LazyChunkBoundary>
+        </div>
       ) : null}
     </div>
   );
