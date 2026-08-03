@@ -709,7 +709,7 @@ function AuthenticatedApp({
                <Route path="/admin/settings" element={<ProtectedRoute user={user} section="admin" fallbackPath={allowedFallbackPath}><AdminCenterPage section="settings" user={user} /></ProtectedRoute>} />
                <Route path="/admin/performance" element={<ProtectedRoute user={user} section="admin" fallbackPath={allowedFallbackPath}><PerformancePage /></ProtectedRoute>} />
                <Route path="/admin/enterprise" element={<EnterpriseRoute user={user} fallbackPath={allowedFallbackPath}><EnterpriseAdminPage user={user} /></EnterpriseRoute>} />
-               <Route path="/data-hub" element={<ProtectedRoute user={user} section="data-hub" fallbackPath={allowedFallbackPath}><DataHubPage user={user} /></ProtectedRoute>} />
+               <Route path="/data-hub" element={<ProtectedRoute user={user} section="data-hub" fallbackPath={allowedFallbackPath}><DataHubPage /></ProtectedRoute>} />
               <Route path="/factorypulse" element={<ProtectedRoute user={user} section="operations" fallbackPath={allowedFallbackPath}><FactoryPulsePage user={user} /></ProtectedRoute>} />
               <Route path="/operations" element={<ProtectedRoute user={user} section="operations" fallbackPath={allowedFallbackPath}><OperationsPage user={user} /></ProtectedRoute>} />
               <Route path="/intelligence" element={<ProtectedRoute user={user} section="intelligence" fallbackPath={allowedFallbackPath}><IntelligencePage user={user} /></ProtectedRoute>} />
