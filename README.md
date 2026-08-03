@@ -182,6 +182,7 @@ The frontend includes a calculation-ready impact layer for Inventory, Production
 - Every supported module includes before/after metrics, savings, trends, outputs, and an improvement register.
 - `/impact/:module/:metric` provides metric history, source data, accountable ownership, related records, review notes, and CSV/JSON exports.
 - Impact values are deterministic simulated data and are visibly labelled as such. Existing backend data and AI services are unchanged; impact API integration is a future step.
+- See [Business Impact and Savings Methodology](docs/business-impact-savings-methodology.md) for the money saved categories, comparison rules, formulas, UI display model, and production validation path.
 
 Stack:
 
