@@ -290,15 +290,26 @@ def read_template_manifest() -> list[dict[str, object]]:
     ]
 
 
+def read_demo_capabilities() -> list[dict[str, str]]:
+    capability_file = SUPER_ADMIN_TEMPLATE_DIR / "22_demo_capabilities.csv"
+    if not capability_file.exists():
+        return []
+    with capability_file.open("r", encoding="utf-8", newline="") as csv_file:
+        return list(csv.DictReader(csv_file))
+
+
 @router.get("/manufacturing-data-hub/super-admin/templates")
 def list_super_admin_templates(_: User = Depends(require_super_admin_template_access)):
     templates = read_template_manifest()
+    capabilities = read_demo_capabilities()
     return {
         "action": "LIST_SUPER_ADMIN_IMPORT_TEMPLATES",
         "message": "Super Admin module import templates",
         "data": {
             "total": len(templates),
             "templates": templates,
+            "capability_total": len(capabilities),
+            "capabilities": capabilities,
             "manifest_file": {
                 "file_name": "00_template_manifest.csv",
                 "description": "Template index with module, category, and required linking columns.",
@@ -308,6 +319,11 @@ def list_super_admin_templates(_: User = Depends(require_super_admin_template_ac
                 "file_name": "00_field_dictionary.csv",
                 "description": "Every template column with data type, required flag, and mapping purpose.",
                 "download_url": "/manufacturing-data-hub/super-admin/templates/00_field_dictionary.csv",
+            },
+            "capability_matrix_file": {
+                "file_name": "22_demo_capabilities.csv",
+                "description": "Client-demo capability matrix showing module value, demo persona, data needed, and linked outputs.",
+                "download_url": "/manufacturing-data-hub/super-admin/templates/22_demo_capabilities.csv",
             },
         },
     }

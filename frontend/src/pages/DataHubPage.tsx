@@ -1757,6 +1757,16 @@ function SuperAdminTemplateDownloads({
     return Array.from(groups.entries());
   }, [catalog?.templates]);
 
+  const groupedCapabilities = useMemo(() => {
+    const groups = new Map<string, SuperAdminImportTemplateCatalog['capabilities']>();
+    (catalog?.capabilities ?? []).forEach((capability) => {
+      const rows = groups.get(capability.category) ?? [];
+      rows.push(capability);
+      groups.set(capability.category, rows);
+    });
+    return Array.from(groups.entries());
+  }, [catalog?.capabilities]);
+
   if (!catalog) {
     return (
       <div className="mt-4">
@@ -1767,7 +1777,7 @@ function SuperAdminTemplateDownloads({
     );
   }
 
-  const governanceFiles = [catalog.manifest_file, catalog.field_dictionary_file];
+  const governanceFiles = [catalog.manifest_file, catalog.field_dictionary_file, catalog.capability_matrix_file];
 
   return (
     <div className="mt-4 space-y-4">
@@ -1789,6 +1799,9 @@ function SuperAdminTemplateDownloads({
                   Maintenance, Quality, Procurement, Sales, Costing, Compliance, portals, reports, documents, Data Hub,
                   Integration Hub, and AI Intelligence.
                 </p>
+                <p className="mt-2 text-sm font-semibold text-cyan-100">
+                  Client demo support: {catalog.capability_total} capability stories are included.
+                </p>
               </div>
             </div>
           </div>
@@ -1809,6 +1822,65 @@ function SuperAdminTemplateDownloads({
               </button>
             ))}
           </div>
+        </div>
+      </Panel>
+
+      <Panel
+        title="Client Demo Capabilities"
+        description="Use this matrix when presenting the platform: what each module can demonstrate, who uses it, what data powers it, and which outputs the client should see."
+      >
+        <div className="space-y-4">
+          {groupedCapabilities.map(([category, capabilities]) => (
+            <div key={category} className="space-y-3">
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-xs font-semibold uppercase tracking-[0.22em] text-cyan-100">{category}</p>
+                <StatusBadge status={`${capabilities.length} capabilities`} />
+              </div>
+              <div className="grid gap-3 lg:grid-cols-2">
+                {capabilities.map((capability) => (
+                  <div key={capability.module_key} className="rounded-[22px] border border-white/10 bg-slate-950/35 p-4">
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div>
+                        <p className="text-base font-semibold text-white">{capability.module_name}</p>
+                        <p className="mt-1 text-xs uppercase tracking-[0.16em] text-slate-500">
+                          {capability.demo_persona} demo
+                        </p>
+                      </div>
+                      <StatusBadge status={capability.demo_readiness_status} />
+                    </div>
+                    <p className="mt-3 text-sm leading-6 text-slate-300">{capability.client_talk_track}</p>
+                    <div className="mt-4 grid gap-3 md:grid-cols-2">
+                      <div>
+                        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Capabilities</p>
+                        <p className="mt-1 text-sm leading-6 text-slate-300">{capability.capabilities.replaceAll('|', ', ')}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Demo actions</p>
+                        <p className="mt-1 text-sm leading-6 text-slate-300">{capability.demo_actions.replaceAll('|', ', ')}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Data needed</p>
+                        <p className="mt-1 text-sm leading-6 text-slate-300">{capability.data_needed}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Linked outputs</p>
+                        <p className="mt-1 text-sm leading-6 text-slate-300">{capability.linked_outputs.replaceAll('|', ', ')}</p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      className="mt-4 inline-flex items-center gap-2 rounded-xl border border-cyan-300/20 bg-cyan-400/10 px-3 py-2 text-xs font-semibold text-cyan-50 transition hover:bg-cyan-400/20 disabled:cursor-not-allowed disabled:opacity-60"
+                      onClick={() => onDownload(capability.source_template_file.split('|')[0])}
+                      disabled={isDownloading}
+                    >
+                      <Download className="h-3.5 w-3.5" />
+                      Download source template
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
         </div>
       </Panel>
 

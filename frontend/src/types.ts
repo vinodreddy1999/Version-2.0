@@ -104,15 +104,36 @@ export type SuperAdminImportTemplate = {
   download_url: string;
 };
 
+export type SuperAdminDemoCapability = {
+  module_key: string;
+  module_name: string;
+  category: string;
+  source_template_file: string;
+  demo_persona: string;
+  capabilities: string;
+  demo_actions: string;
+  data_needed: string;
+  linked_outputs: string;
+  client_talk_track: string;
+  demo_readiness_status: string;
+};
+
 export type SuperAdminImportTemplateCatalog = {
   total: number;
   templates: SuperAdminImportTemplate[];
+  capability_total: number;
+  capabilities: SuperAdminDemoCapability[];
   manifest_file: {
     file_name: string;
     description: string;
     download_url: string;
   };
   field_dictionary_file: {
+    file_name: string;
+    description: string;
+    download_url: string;
+  };
+  capability_matrix_file: {
     file_name: string;
     description: string;
     download_url: string;
