@@ -1,0 +1,2 @@
+tenant_id,client_id,client_code,application_key,module_key,module_display_name,enabled,valid_from,valid_until,reason,approved_by_email
+tenant-demo-001,CLT-000001,ABC-MANUFACTURING,operations,inventory,Inventory,true,2026-01-01,,Enabled for ABC test client,super@metam.local

@@ -1,0 +1,2 @@
+tenant_id,client_id,client_code,plant_id,plant_code,plant_name,plant_type,region,market,timezone,address_line_1,city,state,postal_code,status,plant_manager_email,created_reason
+tenant-demo-001,CLT-000001,ABC-MANUFACTURING,ABC-PLT-001,PLANT-A,Plant A,Manufacturing,North America,United States,America/New_York,100 Industrial Way,Dallas,TX,75001,Active,plant.manager.abcmanufacturing@metam.local,Default test plant

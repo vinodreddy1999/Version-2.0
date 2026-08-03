@@ -1,0 +1,2 @@
+tenant_id,client_id,client_code,client_name,legal_name,industry,region,market,currency,status,tax_registration_id,primary_admin_email,support_tier,subscription_plan,subscription_start_date,subscription_end_date,created_reason
+tenant-demo-001,CLT-000001,ABC-MANUFACTURING,ABC Manufacturing,ABC Manufacturing Pvt Ltd,Manufacturing,North America,United States,USD,Active,US-TAX-10001,admin.abc@metam.local,Enterprise,Premium Operations,2026-01-01,2026-12-31,Initial migration

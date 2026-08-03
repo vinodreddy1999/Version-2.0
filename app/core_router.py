@@ -1,6 +1,9 @@
+import csv
+from pathlib import Path
 from uuid import uuid4
 
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 
 from .audit import audit
@@ -26,6 +29,7 @@ from .runtime_router import current_user, require_any
 from .security import hash_password
 
 router = APIRouter(tags=["Core Platform"])
+SUPER_ADMIN_TEMPLATE_DIR = Path(__file__).resolve().parent / "import_templates" / "super_admin"
 
 
 def as_dict(row):
@@ -38,6 +42,12 @@ def as_dict(row):
 
 def has_override_scope(user: User) -> bool:
     return (user.role or "user") in {"super_admin", "account_owner"}
+
+
+def require_super_admin_template_access(actor: User = Depends(current_user)) -> User:
+    if actor.role != "super_admin":
+        raise HTTPException(status_code=403, detail="Only Super Admin can download global import templates")
+    return actor
 
 
 @router.post("/companies")
@@ -253,6 +263,63 @@ def list_documents(db: Session = Depends(get_db), _: User = Depends(current_user
 @router.get("/audit-logs")
 def view_audit_logs(db: Session = Depends(get_db), _: User = Depends(require_any("admin"))):
     return [as_dict(row) for row in db.query(__import__("app.platform_models", fromlist=["AuditLog"]).AuditLog).all()]
+
+
+def template_files() -> set[str]:
+    if not SUPER_ADMIN_TEMPLATE_DIR.exists():
+        return set()
+    return {path.name for path in SUPER_ADMIN_TEMPLATE_DIR.glob("*.csv") if path.is_file()}
+
+
+def read_template_manifest() -> list[dict[str, object]]:
+    manifest = SUPER_ADMIN_TEMPLATE_DIR / "00_template_manifest.csv"
+    if not manifest.exists():
+        return []
+    with manifest.open("r", encoding="utf-8", newline="") as csv_file:
+        rows = list(csv.DictReader(csv_file))
+    return [
+        {
+            **row,
+            "column_count": int(row.get("column_count") or 0),
+            "required_linking_columns": [
+                column for column in (row.get("required_linking_columns") or "").split("|") if column
+            ],
+            "download_url": f"/manufacturing-data-hub/super-admin/templates/{row.get('file_name')}",
+        }
+        for row in rows
+    ]
+
+
+@router.get("/manufacturing-data-hub/super-admin/templates")
+def list_super_admin_templates(_: User = Depends(require_super_admin_template_access)):
+    templates = read_template_manifest()
+    return {
+        "action": "LIST_SUPER_ADMIN_IMPORT_TEMPLATES",
+        "message": "Super Admin module import templates",
+        "data": {
+            "total": len(templates),
+            "templates": templates,
+            "manifest_file": {
+                "file_name": "00_template_manifest.csv",
+                "description": "Template index with module, category, and required linking columns.",
+                "download_url": "/manufacturing-data-hub/super-admin/templates/00_template_manifest.csv",
+            },
+            "field_dictionary_file": {
+                "file_name": "00_field_dictionary.csv",
+                "description": "Every template column with data type, required flag, and mapping purpose.",
+                "download_url": "/manufacturing-data-hub/super-admin/templates/00_field_dictionary.csv",
+            },
+        },
+    }
+
+
+@router.get("/manufacturing-data-hub/super-admin/templates/{file_name}")
+def download_super_admin_template(file_name: str, _: User = Depends(require_super_admin_template_access)):
+    allowed_files = template_files()
+    if file_name not in allowed_files:
+        raise HTTPException(status_code=404, detail="Template file not found")
+    path = SUPER_ADMIN_TEMPLATE_DIR / file_name
+    return FileResponse(path, media_type="text/csv", filename=file_name)
 
 
 def create_module_router(module_key: str, prefix: str) -> APIRouter:

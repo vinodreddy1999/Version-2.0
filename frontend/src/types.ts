@@ -94,6 +94,31 @@ export type DataMappingRule = {
   confidence: number;
 };
 
+export type SuperAdminImportTemplate = {
+  file_name: string;
+  module: string;
+  category: string;
+  description: string;
+  column_count: number;
+  required_linking_columns: string[];
+  download_url: string;
+};
+
+export type SuperAdminImportTemplateCatalog = {
+  total: number;
+  templates: SuperAdminImportTemplate[];
+  manifest_file: {
+    file_name: string;
+    description: string;
+    download_url: string;
+  };
+  field_dictionary_file: {
+    file_name: string;
+    description: string;
+    download_url: string;
+  };
+};
+
 export type CommandCenter = {
   top_operational_risks?: Array<Record<string, unknown>>;
   customer_impact?: unknown;

@@ -1,0 +1,699 @@
+file_name,module,column_name,data_type,required,purpose
+01_platform_clients.csv,Platform Admin,tenant_id,text,yes,System/linking identifier used for database alignment.
+01_platform_clients.csv,Platform Admin,client_id,text,yes,System/linking identifier used for database alignment.
+01_platform_clients.csv,Platform Admin,client_code,text,yes,Business data field for module import and mapping.
+01_platform_clients.csv,Platform Admin,client_name,text,yes,Business data field for module import and mapping.
+01_platform_clients.csv,Platform Admin,legal_name,text,no,Business data field for module import and mapping.
+01_platform_clients.csv,Platform Admin,industry,text,no,Business data field for module import and mapping.
+01_platform_clients.csv,Platform Admin,region,text,no,Business data field for module import and mapping.
+01_platform_clients.csv,Platform Admin,market,text,no,Business data field for module import and mapping.
+01_platform_clients.csv,Platform Admin,currency,text,no,Business data field for module import and mapping.
+01_platform_clients.csv,Platform Admin,status,text,no,Workflow/status field used for filters and dashboards.
+01_platform_clients.csv,Platform Admin,tax_registration_id,text,no,System/linking identifier used for database alignment.
+01_platform_clients.csv,Platform Admin,primary_admin_email,text,no,Business data field for module import and mapping.
+01_platform_clients.csv,Platform Admin,support_tier,text,no,Business data field for module import and mapping.
+01_platform_clients.csv,Platform Admin,subscription_plan,text,no,Business data field for module import and mapping.
+01_platform_clients.csv,Platform Admin,subscription_start_date,date,no,Business data field for module import and mapping.
+01_platform_clients.csv,Platform Admin,subscription_end_date,date,no,Business data field for module import and mapping.
+01_platform_clients.csv,Platform Admin,created_reason,text,no,Business data field for module import and mapping.
+02_platform_plants.csv,Platform Admin,tenant_id,text,yes,System/linking identifier used for database alignment.
+02_platform_plants.csv,Platform Admin,client_id,text,yes,System/linking identifier used for database alignment.
+02_platform_plants.csv,Platform Admin,client_code,text,yes,Business data field for module import and mapping.
+02_platform_plants.csv,Platform Admin,plant_id,text,yes,System/linking identifier used for database alignment.
+02_platform_plants.csv,Platform Admin,plant_code,text,yes,Business data field for module import and mapping.
+02_platform_plants.csv,Platform Admin,plant_name,text,yes,Business data field for module import and mapping.
+02_platform_plants.csv,Platform Admin,plant_type,text,no,Business data field for module import and mapping.
+02_platform_plants.csv,Platform Admin,region,text,no,Business data field for module import and mapping.
+02_platform_plants.csv,Platform Admin,market,text,no,Business data field for module import and mapping.
+02_platform_plants.csv,Platform Admin,timezone,text,no,Business data field for module import and mapping.
+02_platform_plants.csv,Platform Admin,address_line_1,text,no,Business data field for module import and mapping.
+02_platform_plants.csv,Platform Admin,city,text,no,Business data field for module import and mapping.
+02_platform_plants.csv,Platform Admin,state,text,no,Business data field for module import and mapping.
+02_platform_plants.csv,Platform Admin,postal_code,text,no,Business data field for module import and mapping.
+02_platform_plants.csv,Platform Admin,status,text,no,Workflow/status field used for filters and dashboards.
+02_platform_plants.csv,Platform Admin,plant_manager_email,text,no,Business data field for module import and mapping.
+02_platform_plants.csv,Platform Admin,created_reason,text,no,Business data field for module import and mapping.
+03_platform_users.csv,Platform Admin,tenant_id,text,yes,System/linking identifier used for database alignment.
+03_platform_users.csv,Platform Admin,client_id,text,yes,System/linking identifier used for database alignment.
+03_platform_users.csv,Platform Admin,client_code,text,yes,Business data field for module import and mapping.
+03_platform_users.csv,Platform Admin,plant_id,text,yes,System/linking identifier used for database alignment.
+03_platform_users.csv,Platform Admin,user_id,text,no,System/linking identifier used for database alignment.
+03_platform_users.csv,Platform Admin,first_name,text,no,Business data field for module import and mapping.
+03_platform_users.csv,Platform Admin,last_name,text,no,Business data field for module import and mapping.
+03_platform_users.csv,Platform Admin,display_name,text,no,Business data field for module import and mapping.
+03_platform_users.csv,Platform Admin,email,text,no,Business data field for module import and mapping.
+03_platform_users.csv,Platform Admin,login_name,text,no,Business data field for module import and mapping.
+03_platform_users.csv,Platform Admin,role_keys,text,no,Business data field for module import and mapping.
+03_platform_users.csv,Platform Admin,assigned_application_keys,text,no,Business data field for module import and mapping.
+03_platform_users.csv,Platform Admin,assigned_module_keys,text,no,Business data field for module import and mapping.
+03_platform_users.csv,Platform Admin,department,text,no,Business data field for module import and mapping.
+03_platform_users.csv,Platform Admin,manager_email,text,no,Business data field for module import and mapping.
+03_platform_users.csv,Platform Admin,scope_plant_id,text,no,System/linking identifier used for database alignment.
+03_platform_users.csv,Platform Admin,scope_warehouse_id,text,no,System/linking identifier used for database alignment.
+03_platform_users.csv,Platform Admin,status,text,no,Workflow/status field used for filters and dashboards.
+03_platform_users.csv,Platform Admin,force_password_change,boolean,no,Business data field for module import and mapping.
+03_platform_users.csv,Platform Admin,password_expires_every_days,number,no,Business data field for module import and mapping.
+03_platform_users.csv,Platform Admin,created_reason,text,no,Business data field for module import and mapping.
+04_module_entitlements.csv,Platform Admin,tenant_id,text,yes,System/linking identifier used for database alignment.
+04_module_entitlements.csv,Platform Admin,client_id,text,yes,System/linking identifier used for database alignment.
+04_module_entitlements.csv,Platform Admin,client_code,text,yes,Business data field for module import and mapping.
+04_module_entitlements.csv,Platform Admin,application_key,text,no,Business data field for module import and mapping.
+04_module_entitlements.csv,Platform Admin,module_key,text,yes,Destination module key used by Data Hub routing.
+04_module_entitlements.csv,Platform Admin,module_display_name,text,no,Business data field for module import and mapping.
+04_module_entitlements.csv,Platform Admin,enabled,boolean,no,Business data field for module import and mapping.
+04_module_entitlements.csv,Platform Admin,valid_from,text,no,Business data field for module import and mapping.
+04_module_entitlements.csv,Platform Admin,valid_until,text,no,Business data field for module import and mapping.
+04_module_entitlements.csv,Platform Admin,reason,text,no,Business data field for module import and mapping.
+04_module_entitlements.csv,Platform Admin,approved_by_email,text,no,Business data field for module import and mapping.
+05_planning.csv,Planning,tenant_id,text,yes,System/linking identifier used for database alignment.
+05_planning.csv,Planning,client_id,text,yes,System/linking identifier used for database alignment.
+05_planning.csv,Planning,client_code,text,yes,Business data field for module import and mapping.
+05_planning.csv,Planning,client_name,text,yes,Business data field for module import and mapping.
+05_planning.csv,Planning,plant_id,text,yes,System/linking identifier used for database alignment.
+05_planning.csv,Planning,plant_code,text,yes,Business data field for module import and mapping.
+05_planning.csv,Planning,plant_name,text,yes,Business data field for module import and mapping.
+05_planning.csv,Planning,warehouse_id,text,no,System/linking identifier used for database alignment.
+05_planning.csv,Planning,warehouse_code,text,no,Business data field for module import and mapping.
+05_planning.csv,Planning,warehouse_name,text,no,Business data field for module import and mapping.
+05_planning.csv,Planning,module_key,text,yes,Destination module key used by Data Hub routing.
+05_planning.csv,Planning,source_system,text,yes,Business data field for module import and mapping.
+05_planning.csv,Planning,source_record_id,text,yes,System/linking identifier used for database alignment.
+05_planning.csv,Planning,source_last_updated,datetime,no,Business data field for module import and mapping.
+05_planning.csv,Planning,record_status,text,yes,Workflow/status field used for filters and dashboards.
+05_planning.csv,Planning,data_classification,text,no,Security classification used for access control.
+05_planning.csv,Planning,audit_reason,text,no,Reason captured for audit trail before import.
+05_planning.csv,Planning,planning_record_id,text,no,System/linking identifier used for database alignment.
+05_planning.csv,Planning,plan_type,text,no,Business data field for module import and mapping.
+05_planning.csv,Planning,demand_plan_id,text,no,System/linking identifier used for database alignment.
+05_planning.csv,Planning,forecast_version,text,no,Business data field for module import and mapping.
+05_planning.csv,Planning,product_id,text,no,System/linking identifier used for database alignment.
+05_planning.csv,Planning,product_code,text,no,Business data field for module import and mapping.
+05_planning.csv,Planning,product_name,text,no,Business data field for module import and mapping.
+05_planning.csv,Planning,customer_id,text,no,System/linking identifier used for database alignment.
+05_planning.csv,Planning,sales_order_id,text,no,System/linking identifier used for database alignment.
+05_planning.csv,Planning,period_start,text,no,Business data field for module import and mapping.
+05_planning.csv,Planning,period_end,text,no,Business data field for module import and mapping.
+05_planning.csv,Planning,forecast_quantity,number,no,Business data field for module import and mapping.
+05_planning.csv,Planning,planned_quantity,number,no,Business data field for module import and mapping.
+05_planning.csv,Planning,capacity_hours_required,number,no,Business data field for module import and mapping.
+05_planning.csv,Planning,workforce_hours_required,number,no,Business data field for module import and mapping.
+05_planning.csv,Planning,planner_email,text,no,Business data field for module import and mapping.
+05_planning.csv,Planning,approval_status,text,no,Workflow/status field used for filters and dashboards.
+05_planning.csv,Planning,related_inventory_item_id,text,no,System/linking identifier used for database alignment.
+05_planning.csv,Planning,related_production_order_id,text,no,System/linking identifier used for database alignment.
+05_planning.csv,Planning,exception_code,text,no,Business data field for module import and mapping.
+05_planning.csv,Planning,exception_message,text,no,Business data field for module import and mapping.
+06_inventory.csv,Inventory,tenant_id,text,yes,System/linking identifier used for database alignment.
+06_inventory.csv,Inventory,client_id,text,yes,System/linking identifier used for database alignment.
+06_inventory.csv,Inventory,client_code,text,yes,Business data field for module import and mapping.
+06_inventory.csv,Inventory,client_name,text,yes,Business data field for module import and mapping.
+06_inventory.csv,Inventory,plant_id,text,yes,System/linking identifier used for database alignment.
+06_inventory.csv,Inventory,plant_code,text,yes,Business data field for module import and mapping.
+06_inventory.csv,Inventory,plant_name,text,yes,Business data field for module import and mapping.
+06_inventory.csv,Inventory,warehouse_id,text,no,System/linking identifier used for database alignment.
+06_inventory.csv,Inventory,warehouse_code,text,no,Business data field for module import and mapping.
+06_inventory.csv,Inventory,warehouse_name,text,no,Business data field for module import and mapping.
+06_inventory.csv,Inventory,module_key,text,yes,Destination module key used by Data Hub routing.
+06_inventory.csv,Inventory,source_system,text,yes,Business data field for module import and mapping.
+06_inventory.csv,Inventory,source_record_id,text,yes,System/linking identifier used for database alignment.
+06_inventory.csv,Inventory,source_last_updated,datetime,no,Business data field for module import and mapping.
+06_inventory.csv,Inventory,record_status,text,yes,Workflow/status field used for filters and dashboards.
+06_inventory.csv,Inventory,data_classification,text,no,Security classification used for access control.
+06_inventory.csv,Inventory,audit_reason,text,no,Reason captured for audit trail before import.
+06_inventory.csv,Inventory,inventory_item_id,text,no,System/linking identifier used for database alignment.
+06_inventory.csv,Inventory,item_code,text,no,Business data field for module import and mapping.
+06_inventory.csv,Inventory,item_name,text,no,Business data field for module import and mapping.
+06_inventory.csv,Inventory,item_category,text,no,Business data field for module import and mapping.
+06_inventory.csv,Inventory,item_type,text,no,Business data field for module import and mapping.
+06_inventory.csv,Inventory,uom,text,no,Business data field for module import and mapping.
+06_inventory.csv,Inventory,batch_id,text,no,System/linking identifier used for database alignment.
+06_inventory.csv,Inventory,serial_number,text,no,Business data field for module import and mapping.
+06_inventory.csv,Inventory,supplier_id,text,no,System/linking identifier used for database alignment.
+06_inventory.csv,Inventory,supplier_batch,text,no,Business data field for module import and mapping.
+06_inventory.csv,Inventory,manufacturing_date,date,no,Business data field for module import and mapping.
+06_inventory.csv,Inventory,expiry_date,date,no,Business data field for module import and mapping.
+06_inventory.csv,Inventory,stock_status,text,no,Workflow/status field used for filters and dashboards.
+06_inventory.csv,Inventory,quantity_on_hand,number,no,Business data field for module import and mapping.
+06_inventory.csv,Inventory,available_quantity,number,no,Business data field for module import and mapping.
+06_inventory.csv,Inventory,reserved_quantity,number,no,Business data field for module import and mapping.
+06_inventory.csv,Inventory,allocated_quantity,number,no,Business data field for module import and mapping.
+06_inventory.csv,Inventory,in_transit_quantity,number,no,Business data field for module import and mapping.
+06_inventory.csv,Inventory,quarantine_quantity,number,no,Business data field for module import and mapping.
+06_inventory.csv,Inventory,rejected_quantity,number,no,Business data field for module import and mapping.
+06_inventory.csv,Inventory,damaged_quantity,number,no,Business data field for module import and mapping.
+06_inventory.csv,Inventory,reorder_level,text,no,Business data field for module import and mapping.
+06_inventory.csv,Inventory,safety_stock,text,no,Business data field for module import and mapping.
+06_inventory.csv,Inventory,unit_cost,number,no,Business data field for module import and mapping.
+06_inventory.csv,Inventory,inventory_value,number,no,Business data field for module import and mapping.
+06_inventory.csv,Inventory,bin_id,text,no,System/linking identifier used for database alignment.
+06_inventory.csv,Inventory,related_purchase_order_id,text,no,System/linking identifier used for database alignment.
+06_inventory.csv,Inventory,related_production_order_id,text,no,System/linking identifier used for database alignment.
+07_warehouse.csv,Warehouse,tenant_id,text,yes,System/linking identifier used for database alignment.
+07_warehouse.csv,Warehouse,client_id,text,yes,System/linking identifier used for database alignment.
+07_warehouse.csv,Warehouse,client_code,text,yes,Business data field for module import and mapping.
+07_warehouse.csv,Warehouse,client_name,text,yes,Business data field for module import and mapping.
+07_warehouse.csv,Warehouse,plant_id,text,yes,System/linking identifier used for database alignment.
+07_warehouse.csv,Warehouse,plant_code,text,yes,Business data field for module import and mapping.
+07_warehouse.csv,Warehouse,plant_name,text,yes,Business data field for module import and mapping.
+07_warehouse.csv,Warehouse,warehouse_id,text,no,System/linking identifier used for database alignment.
+07_warehouse.csv,Warehouse,warehouse_code,text,no,Business data field for module import and mapping.
+07_warehouse.csv,Warehouse,warehouse_name,text,no,Business data field for module import and mapping.
+07_warehouse.csv,Warehouse,module_key,text,yes,Destination module key used by Data Hub routing.
+07_warehouse.csv,Warehouse,source_system,text,yes,Business data field for module import and mapping.
+07_warehouse.csv,Warehouse,source_record_id,text,yes,System/linking identifier used for database alignment.
+07_warehouse.csv,Warehouse,source_last_updated,datetime,no,Business data field for module import and mapping.
+07_warehouse.csv,Warehouse,record_status,text,yes,Workflow/status field used for filters and dashboards.
+07_warehouse.csv,Warehouse,data_classification,text,no,Security classification used for access control.
+07_warehouse.csv,Warehouse,audit_reason,text,no,Reason captured for audit trail before import.
+07_warehouse.csv,Warehouse,warehouse_record_id,text,no,System/linking identifier used for database alignment.
+07_warehouse.csv,Warehouse,zone_id,text,no,System/linking identifier used for database alignment.
+07_warehouse.csv,Warehouse,rack_id,text,no,System/linking identifier used for database alignment.
+07_warehouse.csv,Warehouse,shelf_id,text,no,System/linking identifier used for database alignment.
+07_warehouse.csv,Warehouse,bin_id,text,no,System/linking identifier used for database alignment.
+07_warehouse.csv,Warehouse,bin_barcode,text,no,Business data field for module import and mapping.
+07_warehouse.csv,Warehouse,location_type,text,no,Business data field for module import and mapping.
+07_warehouse.csv,Warehouse,capacity_uom,text,no,Business data field for module import and mapping.
+07_warehouse.csv,Warehouse,capacity_total,text,no,Business data field for module import and mapping.
+07_warehouse.csv,Warehouse,capacity_used,text,no,Business data field for module import and mapping.
+07_warehouse.csv,Warehouse,occupancy_percent,number,no,Business data field for module import and mapping.
+07_warehouse.csv,Warehouse,item_code,text,no,Business data field for module import and mapping.
+07_warehouse.csv,Warehouse,batch_id,text,no,System/linking identifier used for database alignment.
+07_warehouse.csv,Warehouse,handling_unit_id,text,no,System/linking identifier used for database alignment.
+07_warehouse.csv,Warehouse,movement_type,text,no,Business data field for module import and mapping.
+07_warehouse.csv,Warehouse,from_bin_id,text,no,System/linking identifier used for database alignment.
+07_warehouse.csv,Warehouse,to_bin_id,text,no,System/linking identifier used for database alignment.
+07_warehouse.csv,Warehouse,task_id,text,no,System/linking identifier used for database alignment.
+07_warehouse.csv,Warehouse,task_status,text,no,Workflow/status field used for filters and dashboards.
+07_warehouse.csv,Warehouse,operator_email,text,no,Business data field for module import and mapping.
+07_warehouse.csv,Warehouse,equipment_id,text,no,System/linking identifier used for database alignment.
+07_warehouse.csv,Warehouse,scan_timestamp,datetime,no,Business data field for module import and mapping.
+07_warehouse.csv,Warehouse,related_inventory_item_id,text,no,System/linking identifier used for database alignment.
+08_production.csv,Production,tenant_id,text,yes,System/linking identifier used for database alignment.
+08_production.csv,Production,client_id,text,yes,System/linking identifier used for database alignment.
+08_production.csv,Production,client_code,text,yes,Business data field for module import and mapping.
+08_production.csv,Production,client_name,text,yes,Business data field for module import and mapping.
+08_production.csv,Production,plant_id,text,yes,System/linking identifier used for database alignment.
+08_production.csv,Production,plant_code,text,yes,Business data field for module import and mapping.
+08_production.csv,Production,plant_name,text,yes,Business data field for module import and mapping.
+08_production.csv,Production,warehouse_id,text,no,System/linking identifier used for database alignment.
+08_production.csv,Production,warehouse_code,text,no,Business data field for module import and mapping.
+08_production.csv,Production,warehouse_name,text,no,Business data field for module import and mapping.
+08_production.csv,Production,module_key,text,yes,Destination module key used by Data Hub routing.
+08_production.csv,Production,source_system,text,yes,Business data field for module import and mapping.
+08_production.csv,Production,source_record_id,text,yes,System/linking identifier used for database alignment.
+08_production.csv,Production,source_last_updated,datetime,no,Business data field for module import and mapping.
+08_production.csv,Production,record_status,text,yes,Workflow/status field used for filters and dashboards.
+08_production.csv,Production,data_classification,text,no,Security classification used for access control.
+08_production.csv,Production,audit_reason,text,no,Reason captured for audit trail before import.
+08_production.csv,Production,production_order_id,text,no,System/linking identifier used for database alignment.
+08_production.csv,Production,work_order_id,text,no,System/linking identifier used for database alignment.
+08_production.csv,Production,bom_id,text,no,System/linking identifier used for database alignment.
+08_production.csv,Production,routing_id,text,no,System/linking identifier used for database alignment.
+08_production.csv,Production,product_code,text,no,Business data field for module import and mapping.
+08_production.csv,Production,product_name,text,no,Business data field for module import and mapping.
+08_production.csv,Production,line_id,text,no,System/linking identifier used for database alignment.
+08_production.csv,Production,work_center_id,text,no,System/linking identifier used for database alignment.
+08_production.csv,Production,shift_id,text,no,System/linking identifier used for database alignment.
+08_production.csv,Production,planned_start,text,no,Business data field for module import and mapping.
+08_production.csv,Production,planned_end,text,no,Business data field for module import and mapping.
+08_production.csv,Production,actual_start,text,no,Business data field for module import and mapping.
+08_production.csv,Production,actual_end,text,no,Business data field for module import and mapping.
+08_production.csv,Production,order_quantity,number,no,Business data field for module import and mapping.
+08_production.csv,Production,completed_quantity,number,no,Business data field for module import and mapping.
+08_production.csv,Production,scrap_quantity,number,no,Business data field for module import and mapping.
+08_production.csv,Production,wip_quantity,number,no,Business data field for module import and mapping.
+08_production.csv,Production,status,text,no,Workflow/status field used for filters and dashboards.
+08_production.csv,Production,priority,text,no,Business data field for module import and mapping.
+08_production.csv,Production,required_material_item_ids,text,no,Business data field for module import and mapping.
+08_production.csv,Production,consumed_material_item_ids,text,no,Business data field for module import and mapping.
+08_production.csv,Production,related_planning_record_id,text,no,System/linking identifier used for database alignment.
+08_production.csv,Production,related_quality_lot_id,text,no,System/linking identifier used for database alignment.
+08_production.csv,Production,supervisor_email,text,no,Business data field for module import and mapping.
+09_maintenance.csv,Maintenance,tenant_id,text,yes,System/linking identifier used for database alignment.
+09_maintenance.csv,Maintenance,client_id,text,yes,System/linking identifier used for database alignment.
+09_maintenance.csv,Maintenance,client_code,text,yes,Business data field for module import and mapping.
+09_maintenance.csv,Maintenance,client_name,text,yes,Business data field for module import and mapping.
+09_maintenance.csv,Maintenance,plant_id,text,yes,System/linking identifier used for database alignment.
+09_maintenance.csv,Maintenance,plant_code,text,yes,Business data field for module import and mapping.
+09_maintenance.csv,Maintenance,plant_name,text,yes,Business data field for module import and mapping.
+09_maintenance.csv,Maintenance,warehouse_id,text,no,System/linking identifier used for database alignment.
+09_maintenance.csv,Maintenance,warehouse_code,text,no,Business data field for module import and mapping.
+09_maintenance.csv,Maintenance,warehouse_name,text,no,Business data field for module import and mapping.
+09_maintenance.csv,Maintenance,module_key,text,yes,Destination module key used by Data Hub routing.
+09_maintenance.csv,Maintenance,source_system,text,yes,Business data field for module import and mapping.
+09_maintenance.csv,Maintenance,source_record_id,text,yes,System/linking identifier used for database alignment.
+09_maintenance.csv,Maintenance,source_last_updated,datetime,no,Business data field for module import and mapping.
+09_maintenance.csv,Maintenance,record_status,text,yes,Workflow/status field used for filters and dashboards.
+09_maintenance.csv,Maintenance,data_classification,text,no,Security classification used for access control.
+09_maintenance.csv,Maintenance,audit_reason,text,no,Reason captured for audit trail before import.
+09_maintenance.csv,Maintenance,asset_id,text,no,System/linking identifier used for database alignment.
+09_maintenance.csv,Maintenance,asset_code,text,no,Business data field for module import and mapping.
+09_maintenance.csv,Maintenance,asset_name,text,no,Business data field for module import and mapping.
+09_maintenance.csv,Maintenance,asset_type,text,no,Business data field for module import and mapping.
+09_maintenance.csv,Maintenance,maintenance_order_id,text,no,System/linking identifier used for database alignment.
+09_maintenance.csv,Maintenance,work_request_id,text,no,System/linking identifier used for database alignment.
+09_maintenance.csv,Maintenance,maintenance_type,text,no,Business data field for module import and mapping.
+09_maintenance.csv,Maintenance,priority,text,no,Business data field for module import and mapping.
+09_maintenance.csv,Maintenance,failure_code,text,no,Business data field for module import and mapping.
+09_maintenance.csv,Maintenance,failure_description,text,no,Business data field for module import and mapping.
+09_maintenance.csv,Maintenance,planned_start,text,no,Business data field for module import and mapping.
+09_maintenance.csv,Maintenance,planned_end,text,no,Business data field for module import and mapping.
+09_maintenance.csv,Maintenance,actual_start,text,no,Business data field for module import and mapping.
+09_maintenance.csv,Maintenance,actual_end,text,no,Business data field for module import and mapping.
+09_maintenance.csv,Maintenance,downtime_minutes,number,no,Business data field for module import and mapping.
+09_maintenance.csv,Maintenance,technician_email,text,no,Business data field for module import and mapping.
+09_maintenance.csv,Maintenance,spare_part_item_code,text,no,Business data field for module import and mapping.
+09_maintenance.csv,Maintenance,spare_part_quantity,number,no,Business data field for module import and mapping.
+09_maintenance.csv,Maintenance,work_status,text,no,Workflow/status field used for filters and dashboards.
+09_maintenance.csv,Maintenance,pm_schedule_id,text,no,System/linking identifier used for database alignment.
+09_maintenance.csv,Maintenance,related_production_order_id,text,no,System/linking identifier used for database alignment.
+09_maintenance.csv,Maintenance,safety_permit_id,text,no,System/linking identifier used for database alignment.
+09_maintenance.csv,Maintenance,cost_amount,number,no,Business data field for module import and mapping.
+10_quality.csv,Quality,tenant_id,text,yes,System/linking identifier used for database alignment.
+10_quality.csv,Quality,client_id,text,yes,System/linking identifier used for database alignment.
+10_quality.csv,Quality,client_code,text,yes,Business data field for module import and mapping.
+10_quality.csv,Quality,client_name,text,yes,Business data field for module import and mapping.
+10_quality.csv,Quality,plant_id,text,yes,System/linking identifier used for database alignment.
+10_quality.csv,Quality,plant_code,text,yes,Business data field for module import and mapping.
+10_quality.csv,Quality,plant_name,text,yes,Business data field for module import and mapping.
+10_quality.csv,Quality,warehouse_id,text,no,System/linking identifier used for database alignment.
+10_quality.csv,Quality,warehouse_code,text,no,Business data field for module import and mapping.
+10_quality.csv,Quality,warehouse_name,text,no,Business data field for module import and mapping.
+10_quality.csv,Quality,module_key,text,yes,Destination module key used by Data Hub routing.
+10_quality.csv,Quality,source_system,text,yes,Business data field for module import and mapping.
+10_quality.csv,Quality,source_record_id,text,yes,System/linking identifier used for database alignment.
+10_quality.csv,Quality,source_last_updated,datetime,no,Business data field for module import and mapping.
+10_quality.csv,Quality,record_status,text,yes,Workflow/status field used for filters and dashboards.
+10_quality.csv,Quality,data_classification,text,no,Security classification used for access control.
+10_quality.csv,Quality,audit_reason,text,no,Reason captured for audit trail before import.
+10_quality.csv,Quality,quality_lot_id,text,no,System/linking identifier used for database alignment.
+10_quality.csv,Quality,inspection_plan_id,text,no,System/linking identifier used for database alignment.
+10_quality.csv,Quality,inspection_type,text,no,Business data field for module import and mapping.
+10_quality.csv,Quality,product_code,text,no,Business data field for module import and mapping.
+10_quality.csv,Quality,batch_id,text,no,System/linking identifier used for database alignment.
+10_quality.csv,Quality,sample_size,text,no,Business data field for module import and mapping.
+10_quality.csv,Quality,inspected_quantity,number,no,Business data field for module import and mapping.
+10_quality.csv,Quality,accepted_quantity,number,no,Business data field for module import and mapping.
+10_quality.csv,Quality,rejected_quantity,number,no,Business data field for module import and mapping.
+10_quality.csv,Quality,defect_code,text,no,Business data field for module import and mapping.
+10_quality.csv,Quality,defect_description,text,no,Business data field for module import and mapping.
+10_quality.csv,Quality,severity,text,no,Business data field for module import and mapping.
+10_quality.csv,Quality,disposition,text,no,Business data field for module import and mapping.
+10_quality.csv,Quality,quarantine_location_id,text,no,System/linking identifier used for database alignment.
+10_quality.csv,Quality,inspector_email,text,no,Business data field for module import and mapping.
+10_quality.csv,Quality,inspection_date,date,no,Business data field for module import and mapping.
+10_quality.csv,Quality,capa_id,text,no,System/linking identifier used for database alignment.
+10_quality.csv,Quality,related_production_order_id,text,no,System/linking identifier used for database alignment.
+10_quality.csv,Quality,related_supplier_id,text,no,System/linking identifier used for database alignment.
+10_quality.csv,Quality,related_inventory_item_id,text,no,System/linking identifier used for database alignment.
+10_quality.csv,Quality,approval_status,text,no,Workflow/status field used for filters and dashboards.
+11_procurement.csv,Procurement,tenant_id,text,yes,System/linking identifier used for database alignment.
+11_procurement.csv,Procurement,client_id,text,yes,System/linking identifier used for database alignment.
+11_procurement.csv,Procurement,client_code,text,yes,Business data field for module import and mapping.
+11_procurement.csv,Procurement,client_name,text,yes,Business data field for module import and mapping.
+11_procurement.csv,Procurement,plant_id,text,yes,System/linking identifier used for database alignment.
+11_procurement.csv,Procurement,plant_code,text,yes,Business data field for module import and mapping.
+11_procurement.csv,Procurement,plant_name,text,yes,Business data field for module import and mapping.
+11_procurement.csv,Procurement,warehouse_id,text,no,System/linking identifier used for database alignment.
+11_procurement.csv,Procurement,warehouse_code,text,no,Business data field for module import and mapping.
+11_procurement.csv,Procurement,warehouse_name,text,no,Business data field for module import and mapping.
+11_procurement.csv,Procurement,module_key,text,yes,Destination module key used by Data Hub routing.
+11_procurement.csv,Procurement,source_system,text,yes,Business data field for module import and mapping.
+11_procurement.csv,Procurement,source_record_id,text,yes,System/linking identifier used for database alignment.
+11_procurement.csv,Procurement,source_last_updated,datetime,no,Business data field for module import and mapping.
+11_procurement.csv,Procurement,record_status,text,yes,Workflow/status field used for filters and dashboards.
+11_procurement.csv,Procurement,data_classification,text,no,Security classification used for access control.
+11_procurement.csv,Procurement,audit_reason,text,no,Reason captured for audit trail before import.
+11_procurement.csv,Procurement,purchase_request_id,text,no,System/linking identifier used for database alignment.
+11_procurement.csv,Procurement,purchase_order_id,text,no,System/linking identifier used for database alignment.
+11_procurement.csv,Procurement,supplier_id,text,no,System/linking identifier used for database alignment.
+11_procurement.csv,Procurement,supplier_code,text,no,Business data field for module import and mapping.
+11_procurement.csv,Procurement,supplier_name,text,no,Business data field for module import and mapping.
+11_procurement.csv,Procurement,item_code,text,no,Business data field for module import and mapping.
+11_procurement.csv,Procurement,item_description,text,no,Business data field for module import and mapping.
+11_procurement.csv,Procurement,requested_quantity,number,no,Business data field for module import and mapping.
+11_procurement.csv,Procurement,ordered_quantity,number,no,Business data field for module import and mapping.
+11_procurement.csv,Procurement,received_quantity,number,no,Business data field for module import and mapping.
+11_procurement.csv,Procurement,uom,text,no,Business data field for module import and mapping.
+11_procurement.csv,Procurement,required_date,date,no,Business data field for module import and mapping.
+11_procurement.csv,Procurement,promised_date,date,no,Business data field for module import and mapping.
+11_procurement.csv,Procurement,supplier_lead_time_days,number,no,Business data field for module import and mapping.
+11_procurement.csv,Procurement,price_per_unit,number,no,Business data field for module import and mapping.
+11_procurement.csv,Procurement,currency,text,no,Business data field for module import and mapping.
+11_procurement.csv,Procurement,po_status,text,no,Workflow/status field used for filters and dashboards.
+11_procurement.csv,Procurement,approval_status,text,no,Workflow/status field used for filters and dashboards.
+11_procurement.csv,Procurement,related_inventory_item_id,text,no,System/linking identifier used for database alignment.
+11_procurement.csv,Procurement,related_warehouse_receipt_id,text,no,System/linking identifier used for database alignment.
+11_procurement.csv,Procurement,requester_email,text,no,Business data field for module import and mapping.
+11_procurement.csv,Procurement,buyer_email,text,no,Business data field for module import and mapping.
+12_sales.csv,Sales & Distribution,tenant_id,text,yes,System/linking identifier used for database alignment.
+12_sales.csv,Sales & Distribution,client_id,text,yes,System/linking identifier used for database alignment.
+12_sales.csv,Sales & Distribution,client_code,text,yes,Business data field for module import and mapping.
+12_sales.csv,Sales & Distribution,client_name,text,yes,Business data field for module import and mapping.
+12_sales.csv,Sales & Distribution,plant_id,text,yes,System/linking identifier used for database alignment.
+12_sales.csv,Sales & Distribution,plant_code,text,yes,Business data field for module import and mapping.
+12_sales.csv,Sales & Distribution,plant_name,text,yes,Business data field for module import and mapping.
+12_sales.csv,Sales & Distribution,warehouse_id,text,no,System/linking identifier used for database alignment.
+12_sales.csv,Sales & Distribution,warehouse_code,text,no,Business data field for module import and mapping.
+12_sales.csv,Sales & Distribution,warehouse_name,text,no,Business data field for module import and mapping.
+12_sales.csv,Sales & Distribution,module_key,text,yes,Destination module key used by Data Hub routing.
+12_sales.csv,Sales & Distribution,source_system,text,yes,Business data field for module import and mapping.
+12_sales.csv,Sales & Distribution,source_record_id,text,yes,System/linking identifier used for database alignment.
+12_sales.csv,Sales & Distribution,source_last_updated,datetime,no,Business data field for module import and mapping.
+12_sales.csv,Sales & Distribution,record_status,text,yes,Workflow/status field used for filters and dashboards.
+12_sales.csv,Sales & Distribution,data_classification,text,no,Security classification used for access control.
+12_sales.csv,Sales & Distribution,audit_reason,text,no,Reason captured for audit trail before import.
+12_sales.csv,Sales & Distribution,customer_id,text,no,System/linking identifier used for database alignment.
+12_sales.csv,Sales & Distribution,customer_code,text,no,Business data field for module import and mapping.
+12_sales.csv,Sales & Distribution,customer_name,text,no,Business data field for module import and mapping.
+12_sales.csv,Sales & Distribution,sales_order_id,text,no,System/linking identifier used for database alignment.
+12_sales.csv,Sales & Distribution,order_line_id,text,no,System/linking identifier used for database alignment.
+12_sales.csv,Sales & Distribution,product_code,text,no,Business data field for module import and mapping.
+12_sales.csv,Sales & Distribution,ordered_quantity,number,no,Business data field for module import and mapping.
+12_sales.csv,Sales & Distribution,confirmed_quantity,number,no,Business data field for module import and mapping.
+12_sales.csv,Sales & Distribution,shipped_quantity,number,no,Business data field for module import and mapping.
+12_sales.csv,Sales & Distribution,order_date,date,no,Business data field for module import and mapping.
+12_sales.csv,Sales & Distribution,requested_ship_date,date,no,Business data field for module import and mapping.
+12_sales.csv,Sales & Distribution,promised_ship_date,date,no,Business data field for module import and mapping.
+12_sales.csv,Sales & Distribution,order_status,text,no,Workflow/status field used for filters and dashboards.
+12_sales.csv,Sales & Distribution,fulfillment_status,text,no,Workflow/status field used for filters and dashboards.
+12_sales.csv,Sales & Distribution,ship_to_region,text,no,Business data field for module import and mapping.
+12_sales.csv,Sales & Distribution,ship_to_market,text,no,Business data field for module import and mapping.
+12_sales.csv,Sales & Distribution,related_inventory_reservation_id,text,no,System/linking identifier used for database alignment.
+12_sales.csv,Sales & Distribution,related_production_order_id,text,no,System/linking identifier used for database alignment.
+12_sales.csv,Sales & Distribution,invoice_id,text,no,System/linking identifier used for database alignment.
+12_sales.csv,Sales & Distribution,revenue_amount,number,no,Business data field for module import and mapping.
+12_sales.csv,Sales & Distribution,currency,text,no,Business data field for module import and mapping.
+13_costing.csv,Costing & Profitability,tenant_id,text,yes,System/linking identifier used for database alignment.
+13_costing.csv,Costing & Profitability,client_id,text,yes,System/linking identifier used for database alignment.
+13_costing.csv,Costing & Profitability,client_code,text,yes,Business data field for module import and mapping.
+13_costing.csv,Costing & Profitability,client_name,text,yes,Business data field for module import and mapping.
+13_costing.csv,Costing & Profitability,plant_id,text,yes,System/linking identifier used for database alignment.
+13_costing.csv,Costing & Profitability,plant_code,text,yes,Business data field for module import and mapping.
+13_costing.csv,Costing & Profitability,plant_name,text,yes,Business data field for module import and mapping.
+13_costing.csv,Costing & Profitability,warehouse_id,text,no,System/linking identifier used for database alignment.
+13_costing.csv,Costing & Profitability,warehouse_code,text,no,Business data field for module import and mapping.
+13_costing.csv,Costing & Profitability,warehouse_name,text,no,Business data field for module import and mapping.
+13_costing.csv,Costing & Profitability,module_key,text,yes,Destination module key used by Data Hub routing.
+13_costing.csv,Costing & Profitability,source_system,text,yes,Business data field for module import and mapping.
+13_costing.csv,Costing & Profitability,source_record_id,text,yes,System/linking identifier used for database alignment.
+13_costing.csv,Costing & Profitability,source_last_updated,datetime,no,Business data field for module import and mapping.
+13_costing.csv,Costing & Profitability,record_status,text,yes,Workflow/status field used for filters and dashboards.
+13_costing.csv,Costing & Profitability,data_classification,text,no,Security classification used for access control.
+13_costing.csv,Costing & Profitability,audit_reason,text,no,Reason captured for audit trail before import.
+13_costing.csv,Costing & Profitability,cost_record_id,number,no,System/linking identifier used for database alignment.
+13_costing.csv,Costing & Profitability,cost_object_type,number,no,Business data field for module import and mapping.
+13_costing.csv,Costing & Profitability,cost_object_id,number,no,System/linking identifier used for database alignment.
+13_costing.csv,Costing & Profitability,product_code,text,no,Business data field for module import and mapping.
+13_costing.csv,Costing & Profitability,cost_center_id,number,no,System/linking identifier used for database alignment.
+13_costing.csv,Costing & Profitability,gl_account,number,no,Business data field for module import and mapping.
+13_costing.csv,Costing & Profitability,cost_type,number,no,Business data field for module import and mapping.
+13_costing.csv,Costing & Profitability,material_cost,number,no,Business data field for module import and mapping.
+13_costing.csv,Costing & Profitability,labor_cost,number,no,Business data field for module import and mapping.
+13_costing.csv,Costing & Profitability,overhead_cost,number,no,Business data field for module import and mapping.
+13_costing.csv,Costing & Profitability,maintenance_cost,number,no,Business data field for module import and mapping.
+13_costing.csv,Costing & Profitability,quality_cost,number,no,Business data field for module import and mapping.
+13_costing.csv,Costing & Profitability,logistics_cost,number,no,Business data field for module import and mapping.
+13_costing.csv,Costing & Profitability,total_cost,number,no,Business data field for module import and mapping.
+13_costing.csv,Costing & Profitability,currency,text,no,Business data field for module import and mapping.
+13_costing.csv,Costing & Profitability,period_start,text,no,Business data field for module import and mapping.
+13_costing.csv,Costing & Profitability,period_end,text,no,Business data field for module import and mapping.
+13_costing.csv,Costing & Profitability,variance_amount,number,no,Business data field for module import and mapping.
+13_costing.csv,Costing & Profitability,variance_reason,text,no,Business data field for module import and mapping.
+13_costing.csv,Costing & Profitability,related_production_order_id,text,no,System/linking identifier used for database alignment.
+13_costing.csv,Costing & Profitability,related_inventory_item_id,text,no,System/linking identifier used for database alignment.
+13_costing.csv,Costing & Profitability,finance_owner_email,text,no,Business data field for module import and mapping.
+14_compliance.csv,Compliance,tenant_id,text,yes,System/linking identifier used for database alignment.
+14_compliance.csv,Compliance,client_id,text,yes,System/linking identifier used for database alignment.
+14_compliance.csv,Compliance,client_code,text,yes,Business data field for module import and mapping.
+14_compliance.csv,Compliance,client_name,text,yes,Business data field for module import and mapping.
+14_compliance.csv,Compliance,plant_id,text,yes,System/linking identifier used for database alignment.
+14_compliance.csv,Compliance,plant_code,text,yes,Business data field for module import and mapping.
+14_compliance.csv,Compliance,plant_name,text,yes,Business data field for module import and mapping.
+14_compliance.csv,Compliance,warehouse_id,text,no,System/linking identifier used for database alignment.
+14_compliance.csv,Compliance,warehouse_code,text,no,Business data field for module import and mapping.
+14_compliance.csv,Compliance,warehouse_name,text,no,Business data field for module import and mapping.
+14_compliance.csv,Compliance,module_key,text,yes,Destination module key used by Data Hub routing.
+14_compliance.csv,Compliance,source_system,text,yes,Business data field for module import and mapping.
+14_compliance.csv,Compliance,source_record_id,text,yes,System/linking identifier used for database alignment.
+14_compliance.csv,Compliance,source_last_updated,datetime,no,Business data field for module import and mapping.
+14_compliance.csv,Compliance,record_status,text,yes,Workflow/status field used for filters and dashboards.
+14_compliance.csv,Compliance,data_classification,text,no,Security classification used for access control.
+14_compliance.csv,Compliance,audit_reason,text,no,Reason captured for audit trail before import.
+14_compliance.csv,Compliance,compliance_record_id,text,no,System/linking identifier used for database alignment.
+14_compliance.csv,Compliance,regulation_code,text,no,Business data field for module import and mapping.
+14_compliance.csv,Compliance,regulation_name,text,no,Business data field for module import and mapping.
+14_compliance.csv,Compliance,compliance_domain,text,no,Business data field for module import and mapping.
+14_compliance.csv,Compliance,requirement_id,text,no,System/linking identifier used for database alignment.
+14_compliance.csv,Compliance,control_id,text,no,System/linking identifier used for database alignment.
+14_compliance.csv,Compliance,evidence_document_id,text,no,System/linking identifier used for database alignment.
+14_compliance.csv,Compliance,evidence_status,text,no,Workflow/status field used for filters and dashboards.
+14_compliance.csv,Compliance,audit_period,text,no,Business data field for module import and mapping.
+14_compliance.csv,Compliance,audit_date,date,no,Business data field for module import and mapping.
+14_compliance.csv,Compliance,responsible_owner_email,text,no,Business data field for module import and mapping.
+14_compliance.csv,Compliance,risk_rating,text,no,Business data field for module import and mapping.
+14_compliance.csv,Compliance,finding_status,text,no,Workflow/status field used for filters and dashboards.
+14_compliance.csv,Compliance,corrective_action_id,text,no,System/linking identifier used for database alignment.
+14_compliance.csv,Compliance,due_date,date,no,Business data field for module import and mapping.
+14_compliance.csv,Compliance,closure_date,date,no,Business data field for module import and mapping.
+14_compliance.csv,Compliance,related_quality_lot_id,text,no,System/linking identifier used for database alignment.
+14_compliance.csv,Compliance,related_supplier_id,text,no,System/linking identifier used for database alignment.
+15_customer_portal.csv,Customer Portal,tenant_id,text,yes,System/linking identifier used for database alignment.
+15_customer_portal.csv,Customer Portal,client_id,text,yes,System/linking identifier used for database alignment.
+15_customer_portal.csv,Customer Portal,client_code,text,yes,Business data field for module import and mapping.
+15_customer_portal.csv,Customer Portal,client_name,text,yes,Business data field for module import and mapping.
+15_customer_portal.csv,Customer Portal,plant_id,text,yes,System/linking identifier used for database alignment.
+15_customer_portal.csv,Customer Portal,plant_code,text,yes,Business data field for module import and mapping.
+15_customer_portal.csv,Customer Portal,plant_name,text,yes,Business data field for module import and mapping.
+15_customer_portal.csv,Customer Portal,warehouse_id,text,no,System/linking identifier used for database alignment.
+15_customer_portal.csv,Customer Portal,warehouse_code,text,no,Business data field for module import and mapping.
+15_customer_portal.csv,Customer Portal,warehouse_name,text,no,Business data field for module import and mapping.
+15_customer_portal.csv,Customer Portal,module_key,text,yes,Destination module key used by Data Hub routing.
+15_customer_portal.csv,Customer Portal,source_system,text,yes,Business data field for module import and mapping.
+15_customer_portal.csv,Customer Portal,source_record_id,text,yes,System/linking identifier used for database alignment.
+15_customer_portal.csv,Customer Portal,source_last_updated,datetime,no,Business data field for module import and mapping.
+15_customer_portal.csv,Customer Portal,record_status,text,yes,Workflow/status field used for filters and dashboards.
+15_customer_portal.csv,Customer Portal,data_classification,text,no,Security classification used for access control.
+15_customer_portal.csv,Customer Portal,audit_reason,text,no,Reason captured for audit trail before import.
+15_customer_portal.csv,Customer Portal,portal_record_id,text,no,System/linking identifier used for database alignment.
+15_customer_portal.csv,Customer Portal,customer_id,text,no,System/linking identifier used for database alignment.
+15_customer_portal.csv,Customer Portal,customer_name,text,no,Business data field for module import and mapping.
+15_customer_portal.csv,Customer Portal,request_type,text,no,Business data field for module import and mapping.
+15_customer_portal.csv,Customer Portal,request_id,text,no,System/linking identifier used for database alignment.
+15_customer_portal.csv,Customer Portal,related_sales_order_id,text,no,System/linking identifier used for database alignment.
+15_customer_portal.csv,Customer Portal,related_shipment_id,text,no,System/linking identifier used for database alignment.
+15_customer_portal.csv,Customer Portal,product_code,text,no,Business data field for module import and mapping.
+15_customer_portal.csv,Customer Portal,issue_category,text,no,Business data field for module import and mapping.
+15_customer_portal.csv,Customer Portal,priority,text,no,Business data field for module import and mapping.
+15_customer_portal.csv,Customer Portal,status,text,no,Workflow/status field used for filters and dashboards.
+15_customer_portal.csv,Customer Portal,created_by_email,text,no,Business data field for module import and mapping.
+15_customer_portal.csv,Customer Portal,assigned_to_email,text,no,Business data field for module import and mapping.
+15_customer_portal.csv,Customer Portal,created_at,datetime,no,Business data field for module import and mapping.
+15_customer_portal.csv,Customer Portal,due_at,datetime,no,Business data field for module import and mapping.
+15_customer_portal.csv,Customer Portal,resolution_summary,text,no,Business data field for module import and mapping.
+15_customer_portal.csv,Customer Portal,satisfaction_score,number,no,Business data field for module import and mapping.
+16_supplier_portal.csv,Supplier Portal,tenant_id,text,yes,System/linking identifier used for database alignment.
+16_supplier_portal.csv,Supplier Portal,client_id,text,yes,System/linking identifier used for database alignment.
+16_supplier_portal.csv,Supplier Portal,client_code,text,yes,Business data field for module import and mapping.
+16_supplier_portal.csv,Supplier Portal,client_name,text,yes,Business data field for module import and mapping.
+16_supplier_portal.csv,Supplier Portal,plant_id,text,yes,System/linking identifier used for database alignment.
+16_supplier_portal.csv,Supplier Portal,plant_code,text,yes,Business data field for module import and mapping.
+16_supplier_portal.csv,Supplier Portal,plant_name,text,yes,Business data field for module import and mapping.
+16_supplier_portal.csv,Supplier Portal,warehouse_id,text,no,System/linking identifier used for database alignment.
+16_supplier_portal.csv,Supplier Portal,warehouse_code,text,no,Business data field for module import and mapping.
+16_supplier_portal.csv,Supplier Portal,warehouse_name,text,no,Business data field for module import and mapping.
+16_supplier_portal.csv,Supplier Portal,module_key,text,yes,Destination module key used by Data Hub routing.
+16_supplier_portal.csv,Supplier Portal,source_system,text,yes,Business data field for module import and mapping.
+16_supplier_portal.csv,Supplier Portal,source_record_id,text,yes,System/linking identifier used for database alignment.
+16_supplier_portal.csv,Supplier Portal,source_last_updated,datetime,no,Business data field for module import and mapping.
+16_supplier_portal.csv,Supplier Portal,record_status,text,yes,Workflow/status field used for filters and dashboards.
+16_supplier_portal.csv,Supplier Portal,data_classification,text,no,Security classification used for access control.
+16_supplier_portal.csv,Supplier Portal,audit_reason,text,no,Reason captured for audit trail before import.
+16_supplier_portal.csv,Supplier Portal,portal_record_id,text,no,System/linking identifier used for database alignment.
+16_supplier_portal.csv,Supplier Portal,supplier_id,text,no,System/linking identifier used for database alignment.
+16_supplier_portal.csv,Supplier Portal,supplier_name,text,no,Business data field for module import and mapping.
+16_supplier_portal.csv,Supplier Portal,request_type,text,no,Business data field for module import and mapping.
+16_supplier_portal.csv,Supplier Portal,request_id,text,no,System/linking identifier used for database alignment.
+16_supplier_portal.csv,Supplier Portal,related_purchase_order_id,text,no,System/linking identifier used for database alignment.
+16_supplier_portal.csv,Supplier Portal,related_quality_lot_id,text,no,System/linking identifier used for database alignment.
+16_supplier_portal.csv,Supplier Portal,item_code,text,no,Business data field for module import and mapping.
+16_supplier_portal.csv,Supplier Portal,issue_category,text,no,Business data field for module import and mapping.
+16_supplier_portal.csv,Supplier Portal,priority,text,no,Business data field for module import and mapping.
+16_supplier_portal.csv,Supplier Portal,status,text,no,Workflow/status field used for filters and dashboards.
+16_supplier_portal.csv,Supplier Portal,supplier_contact_email,text,no,Business data field for module import and mapping.
+16_supplier_portal.csv,Supplier Portal,buyer_email,text,no,Business data field for module import and mapping.
+16_supplier_portal.csv,Supplier Portal,created_at,datetime,no,Business data field for module import and mapping.
+16_supplier_portal.csv,Supplier Portal,due_at,datetime,no,Business data field for module import and mapping.
+16_supplier_portal.csv,Supplier Portal,resolution_summary,text,no,Business data field for module import and mapping.
+16_supplier_portal.csv,Supplier Portal,supplier_rating,text,no,Business data field for module import and mapping.
+17_reports_analytics.csv,Reports & Analytics,tenant_id,text,yes,System/linking identifier used for database alignment.
+17_reports_analytics.csv,Reports & Analytics,client_id,text,yes,System/linking identifier used for database alignment.
+17_reports_analytics.csv,Reports & Analytics,client_code,text,yes,Business data field for module import and mapping.
+17_reports_analytics.csv,Reports & Analytics,client_name,text,yes,Business data field for module import and mapping.
+17_reports_analytics.csv,Reports & Analytics,plant_id,text,yes,System/linking identifier used for database alignment.
+17_reports_analytics.csv,Reports & Analytics,plant_code,text,yes,Business data field for module import and mapping.
+17_reports_analytics.csv,Reports & Analytics,plant_name,text,yes,Business data field for module import and mapping.
+17_reports_analytics.csv,Reports & Analytics,warehouse_id,text,no,System/linking identifier used for database alignment.
+17_reports_analytics.csv,Reports & Analytics,warehouse_code,text,no,Business data field for module import and mapping.
+17_reports_analytics.csv,Reports & Analytics,warehouse_name,text,no,Business data field for module import and mapping.
+17_reports_analytics.csv,Reports & Analytics,module_key,text,yes,Destination module key used by Data Hub routing.
+17_reports_analytics.csv,Reports & Analytics,source_system,text,yes,Business data field for module import and mapping.
+17_reports_analytics.csv,Reports & Analytics,source_record_id,text,yes,System/linking identifier used for database alignment.
+17_reports_analytics.csv,Reports & Analytics,source_last_updated,datetime,no,Business data field for module import and mapping.
+17_reports_analytics.csv,Reports & Analytics,record_status,text,yes,Workflow/status field used for filters and dashboards.
+17_reports_analytics.csv,Reports & Analytics,data_classification,text,no,Security classification used for access control.
+17_reports_analytics.csv,Reports & Analytics,audit_reason,text,no,Reason captured for audit trail before import.
+17_reports_analytics.csv,Reports & Analytics,report_id,text,no,System/linking identifier used for database alignment.
+17_reports_analytics.csv,Reports & Analytics,report_name,text,no,Business data field for module import and mapping.
+17_reports_analytics.csv,Reports & Analytics,report_domain,text,no,Business data field for module import and mapping.
+17_reports_analytics.csv,Reports & Analytics,dataset_id,text,no,System/linking identifier used for database alignment.
+17_reports_analytics.csv,Reports & Analytics,data_source_id,text,no,System/linking identifier used for database alignment.
+17_reports_analytics.csv,Reports & Analytics,refresh_mode,text,no,Business data field for module import and mapping.
+17_reports_analytics.csv,Reports & Analytics,refresh_status,text,no,Workflow/status field used for filters and dashboards.
+17_reports_analytics.csv,Reports & Analytics,last_refresh_at,datetime,no,Business data field for module import and mapping.
+17_reports_analytics.csv,Reports & Analytics,row_count,number,no,Business data field for module import and mapping.
+17_reports_analytics.csv,Reports & Analytics,owner_email,text,no,Business data field for module import and mapping.
+17_reports_analytics.csv,Reports & Analytics,visibility_level,text,no,Business data field for module import and mapping.
+17_reports_analytics.csv,Reports & Analytics,export_allowed,boolean,no,Business data field for module import and mapping.
+17_reports_analytics.csv,Reports & Analytics,related_dashboard_id,text,no,System/linking identifier used for database alignment.
+17_reports_analytics.csv,Reports & Analytics,kpi_name,text,no,Business data field for module import and mapping.
+17_reports_analytics.csv,Reports & Analytics,kpi_value,number,no,Business data field for module import and mapping.
+17_reports_analytics.csv,Reports & Analytics,kpi_period,text,no,Business data field for module import and mapping.
+17_reports_analytics.csv,Reports & Analytics,quality_score,number,no,Business data field for module import and mapping.
+18_document_management.csv,Document Management,tenant_id,text,yes,System/linking identifier used for database alignment.
+18_document_management.csv,Document Management,client_id,text,yes,System/linking identifier used for database alignment.
+18_document_management.csv,Document Management,client_code,text,yes,Business data field for module import and mapping.
+18_document_management.csv,Document Management,client_name,text,yes,Business data field for module import and mapping.
+18_document_management.csv,Document Management,plant_id,text,yes,System/linking identifier used for database alignment.
+18_document_management.csv,Document Management,plant_code,text,yes,Business data field for module import and mapping.
+18_document_management.csv,Document Management,plant_name,text,yes,Business data field for module import and mapping.
+18_document_management.csv,Document Management,warehouse_id,text,no,System/linking identifier used for database alignment.
+18_document_management.csv,Document Management,warehouse_code,text,no,Business data field for module import and mapping.
+18_document_management.csv,Document Management,warehouse_name,text,no,Business data field for module import and mapping.
+18_document_management.csv,Document Management,module_key,text,yes,Destination module key used by Data Hub routing.
+18_document_management.csv,Document Management,source_system,text,yes,Business data field for module import and mapping.
+18_document_management.csv,Document Management,source_record_id,text,yes,System/linking identifier used for database alignment.
+18_document_management.csv,Document Management,source_last_updated,datetime,no,Business data field for module import and mapping.
+18_document_management.csv,Document Management,record_status,text,yes,Workflow/status field used for filters and dashboards.
+18_document_management.csv,Document Management,data_classification,text,no,Security classification used for access control.
+18_document_management.csv,Document Management,audit_reason,text,no,Reason captured for audit trail before import.
+18_document_management.csv,Document Management,document_id,text,no,System/linking identifier used for database alignment.
+18_document_management.csv,Document Management,document_type,text,no,Business data field for module import and mapping.
+18_document_management.csv,Document Management,document_title,text,no,Business data field for module import and mapping.
+18_document_management.csv,Document Management,file_name,text,no,Business data field for module import and mapping.
+18_document_management.csv,Document Management,file_url,text,no,Business data field for module import and mapping.
+18_document_management.csv,Document Management,version,text,no,Business data field for module import and mapping.
+18_document_management.csv,Document Management,entity_type,text,no,Business data field for module import and mapping.
+18_document_management.csv,Document Management,entity_id,text,no,System/linking identifier used for database alignment.
+18_document_management.csv,Document Management,owner_email,text,no,Business data field for module import and mapping.
+18_document_management.csv,Document Management,approval_status,text,no,Workflow/status field used for filters and dashboards.
+18_document_management.csv,Document Management,effective_date,date,no,Business data field for module import and mapping.
+18_document_management.csv,Document Management,expiry_date,date,no,Business data field for module import and mapping.
+18_document_management.csv,Document Management,classification,text,no,Business data field for module import and mapping.
+18_document_management.csv,Document Management,retention_policy,text,no,Business data field for module import and mapping.
+18_document_management.csv,Document Management,related_audit_id,text,no,System/linking identifier used for database alignment.
+19_manufacturing_data_hub.csv,Manufacturing Data Hub,tenant_id,text,yes,System/linking identifier used for database alignment.
+19_manufacturing_data_hub.csv,Manufacturing Data Hub,client_id,text,yes,System/linking identifier used for database alignment.
+19_manufacturing_data_hub.csv,Manufacturing Data Hub,client_code,text,yes,Business data field for module import and mapping.
+19_manufacturing_data_hub.csv,Manufacturing Data Hub,client_name,text,yes,Business data field for module import and mapping.
+19_manufacturing_data_hub.csv,Manufacturing Data Hub,plant_id,text,yes,System/linking identifier used for database alignment.
+19_manufacturing_data_hub.csv,Manufacturing Data Hub,plant_code,text,yes,Business data field for module import and mapping.
+19_manufacturing_data_hub.csv,Manufacturing Data Hub,plant_name,text,yes,Business data field for module import and mapping.
+19_manufacturing_data_hub.csv,Manufacturing Data Hub,warehouse_id,text,no,System/linking identifier used for database alignment.
+19_manufacturing_data_hub.csv,Manufacturing Data Hub,warehouse_code,text,no,Business data field for module import and mapping.
+19_manufacturing_data_hub.csv,Manufacturing Data Hub,warehouse_name,text,no,Business data field for module import and mapping.
+19_manufacturing_data_hub.csv,Manufacturing Data Hub,module_key,text,yes,Destination module key used by Data Hub routing.
+19_manufacturing_data_hub.csv,Manufacturing Data Hub,source_system,text,yes,Business data field for module import and mapping.
+19_manufacturing_data_hub.csv,Manufacturing Data Hub,source_record_id,text,yes,System/linking identifier used for database alignment.
+19_manufacturing_data_hub.csv,Manufacturing Data Hub,source_last_updated,datetime,no,Business data field for module import and mapping.
+19_manufacturing_data_hub.csv,Manufacturing Data Hub,record_status,text,yes,Workflow/status field used for filters and dashboards.
+19_manufacturing_data_hub.csv,Manufacturing Data Hub,data_classification,text,no,Security classification used for access control.
+19_manufacturing_data_hub.csv,Manufacturing Data Hub,audit_reason,text,no,Reason captured for audit trail before import.
+19_manufacturing_data_hub.csv,Manufacturing Data Hub,catalog_entry_id,text,no,System/linking identifier used for database alignment.
+19_manufacturing_data_hub.csv,Manufacturing Data Hub,data_type,text,no,Business data field for module import and mapping.
+19_manufacturing_data_hub.csv,Manufacturing Data Hub,connector_key,text,no,Business data field for module import and mapping.
+19_manufacturing_data_hub.csv,Manufacturing Data Hub,connector_category,text,no,Business data field for module import and mapping.
+19_manufacturing_data_hub.csv,Manufacturing Data Hub,connection_id,text,no,System/linking identifier used for database alignment.
+19_manufacturing_data_hub.csv,Manufacturing Data Hub,data_owner_email,text,no,Business data field for module import and mapping.
+19_manufacturing_data_hub.csv,Manufacturing Data Hub,dataset_name,text,no,Business data field for module import and mapping.
+19_manufacturing_data_hub.csv,Manufacturing Data Hub,table_name,text,no,Business data field for module import and mapping.
+19_manufacturing_data_hub.csv,Manufacturing Data Hub,source_field_name,text,no,Business data field for module import and mapping.
+19_manufacturing_data_hub.csv,Manufacturing Data Hub,target_entity,text,no,Business data field for module import and mapping.
+19_manufacturing_data_hub.csv,Manufacturing Data Hub,target_field,text,no,Business data field for module import and mapping.
+19_manufacturing_data_hub.csv,Manufacturing Data Hub,transform_rule,text,no,Business data field for module import and mapping.
+19_manufacturing_data_hub.csv,Manufacturing Data Hub,quality_score,number,no,Business data field for module import and mapping.
+19_manufacturing_data_hub.csv,Manufacturing Data Hub,ai_ready,boolean,no,Business data field for module import and mapping.
+19_manufacturing_data_hub.csv,Manufacturing Data Hub,refresh_mode,text,no,Business data field for module import and mapping.
+19_manufacturing_data_hub.csv,Manufacturing Data Hub,last_sync_at,datetime,no,Business data field for module import and mapping.
+19_manufacturing_data_hub.csv,Manufacturing Data Hub,related_module_key,text,no,Cross-module relationship key.
+20_integration_hub.csv,Integration Hub,tenant_id,text,yes,System/linking identifier used for database alignment.
+20_integration_hub.csv,Integration Hub,client_id,text,yes,System/linking identifier used for database alignment.
+20_integration_hub.csv,Integration Hub,client_code,text,yes,Business data field for module import and mapping.
+20_integration_hub.csv,Integration Hub,client_name,text,yes,Business data field for module import and mapping.
+20_integration_hub.csv,Integration Hub,plant_id,text,yes,System/linking identifier used for database alignment.
+20_integration_hub.csv,Integration Hub,plant_code,text,yes,Business data field for module import and mapping.
+20_integration_hub.csv,Integration Hub,plant_name,text,yes,Business data field for module import and mapping.
+20_integration_hub.csv,Integration Hub,warehouse_id,text,no,System/linking identifier used for database alignment.
+20_integration_hub.csv,Integration Hub,warehouse_code,text,no,Business data field for module import and mapping.
+20_integration_hub.csv,Integration Hub,warehouse_name,text,no,Business data field for module import and mapping.
+20_integration_hub.csv,Integration Hub,module_key,text,yes,Destination module key used by Data Hub routing.
+20_integration_hub.csv,Integration Hub,source_system,text,yes,Business data field for module import and mapping.
+20_integration_hub.csv,Integration Hub,source_record_id,text,yes,System/linking identifier used for database alignment.
+20_integration_hub.csv,Integration Hub,source_last_updated,datetime,no,Business data field for module import and mapping.
+20_integration_hub.csv,Integration Hub,record_status,text,yes,Workflow/status field used for filters and dashboards.
+20_integration_hub.csv,Integration Hub,data_classification,text,no,Security classification used for access control.
+20_integration_hub.csv,Integration Hub,audit_reason,text,no,Reason captured for audit trail before import.
+20_integration_hub.csv,Integration Hub,integration_id,text,no,System/linking identifier used for database alignment.
+20_integration_hub.csv,Integration Hub,integration_name,text,no,Business data field for module import and mapping.
+20_integration_hub.csv,Integration Hub,source_system,text,yes,Business data field for module import and mapping.
+20_integration_hub.csv,Integration Hub,target_system,text,no,Business data field for module import and mapping.
+20_integration_hub.csv,Integration Hub,source_module_key,text,no,Business data field for module import and mapping.
+20_integration_hub.csv,Integration Hub,target_module_key,text,no,Business data field for module import and mapping.
+20_integration_hub.csv,Integration Hub,connector_type,text,no,Business data field for module import and mapping.
+20_integration_hub.csv,Integration Hub,auth_method,text,no,Business data field for module import and mapping.
+20_integration_hub.csv,Integration Hub,endpoint_url,text,no,Business data field for module import and mapping.
+20_integration_hub.csv,Integration Hub,schedule,text,no,Business data field for module import and mapping.
+20_integration_hub.csv,Integration Hub,sync_direction,text,no,Business data field for module import and mapping.
+20_integration_hub.csv,Integration Hub,last_sync_at,datetime,no,Business data field for module import and mapping.
+20_integration_hub.csv,Integration Hub,sync_status,text,no,Workflow/status field used for filters and dashboards.
+20_integration_hub.csv,Integration Hub,records_processed,text,no,Business data field for module import and mapping.
+20_integration_hub.csv,Integration Hub,records_failed,text,no,Business data field for module import and mapping.
+20_integration_hub.csv,Integration Hub,error_code,text,no,Business data field for module import and mapping.
+20_integration_hub.csv,Integration Hub,error_message,text,no,Business data field for module import and mapping.
+20_integration_hub.csv,Integration Hub,retry_count,number,no,Business data field for module import and mapping.
+20_integration_hub.csv,Integration Hub,owner_email,text,no,Business data field for module import and mapping.
+21_ai_intelligence.csv,AI Intelligence,tenant_id,text,yes,System/linking identifier used for database alignment.
+21_ai_intelligence.csv,AI Intelligence,client_id,text,yes,System/linking identifier used for database alignment.
+21_ai_intelligence.csv,AI Intelligence,client_code,text,yes,Business data field for module import and mapping.
+21_ai_intelligence.csv,AI Intelligence,client_name,text,yes,Business data field for module import and mapping.
+21_ai_intelligence.csv,AI Intelligence,plant_id,text,yes,System/linking identifier used for database alignment.
+21_ai_intelligence.csv,AI Intelligence,plant_code,text,yes,Business data field for module import and mapping.
+21_ai_intelligence.csv,AI Intelligence,plant_name,text,yes,Business data field for module import and mapping.
+21_ai_intelligence.csv,AI Intelligence,warehouse_id,text,no,System/linking identifier used for database alignment.
+21_ai_intelligence.csv,AI Intelligence,warehouse_code,text,no,Business data field for module import and mapping.
+21_ai_intelligence.csv,AI Intelligence,warehouse_name,text,no,Business data field for module import and mapping.
+21_ai_intelligence.csv,AI Intelligence,module_key,text,yes,Destination module key used by Data Hub routing.
+21_ai_intelligence.csv,AI Intelligence,source_system,text,yes,Business data field for module import and mapping.
+21_ai_intelligence.csv,AI Intelligence,source_record_id,text,yes,System/linking identifier used for database alignment.
+21_ai_intelligence.csv,AI Intelligence,source_last_updated,datetime,no,Business data field for module import and mapping.
+21_ai_intelligence.csv,AI Intelligence,record_status,text,yes,Workflow/status field used for filters and dashboards.
+21_ai_intelligence.csv,AI Intelligence,data_classification,text,no,Security classification used for access control.
+21_ai_intelligence.csv,AI Intelligence,audit_reason,text,no,Reason captured for audit trail before import.
+21_ai_intelligence.csv,AI Intelligence,ai_signal_id,text,no,System/linking identifier used for database alignment.
+21_ai_intelligence.csv,AI Intelligence,ai_domain,text,no,Business data field for module import and mapping.
+21_ai_intelligence.csv,AI Intelligence,model_name,text,no,Business data field for module import and mapping.
+21_ai_intelligence.csv,AI Intelligence,model_version,text,no,Business data field for module import and mapping.
+21_ai_intelligence.csv,AI Intelligence,input_dataset_id,text,no,System/linking identifier used for database alignment.
+21_ai_intelligence.csv,AI Intelligence,target_module_key,text,no,Business data field for module import and mapping.
+21_ai_intelligence.csv,AI Intelligence,entity_type,text,no,Business data field for module import and mapping.
+21_ai_intelligence.csv,AI Intelligence,entity_id,text,no,System/linking identifier used for database alignment.
+21_ai_intelligence.csv,AI Intelligence,prediction_type,text,no,Business data field for module import and mapping.
+21_ai_intelligence.csv,AI Intelligence,prediction_value,number,no,Business data field for module import and mapping.
+21_ai_intelligence.csv,AI Intelligence,confidence_score,number,no,Business data field for module import and mapping.
+21_ai_intelligence.csv,AI Intelligence,risk_level,text,no,Business data field for module import and mapping.
+21_ai_intelligence.csv,AI Intelligence,recommendation_text,text,no,Business data field for module import and mapping.
+21_ai_intelligence.csv,AI Intelligence,recommended_action,text,no,Business data field for module import and mapping.
+21_ai_intelligence.csv,AI Intelligence,human_approval_required,boolean,no,Business data field for module import and mapping.
+21_ai_intelligence.csv,AI Intelligence,generated_at,datetime,no,Business data field for module import and mapping.
+21_ai_intelligence.csv,AI Intelligence,reviewed_by_email,text,no,Business data field for module import and mapping.
+21_ai_intelligence.csv,AI Intelligence,decision_status,text,no,Workflow/status field used for filters and dashboards.

@@ -1,6 +1,6 @@
 import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { useMutation, useQueries, useQueryClient } from '@tanstack/react-query';
-import { Cable, CheckCircle2, Database, Route, ShieldCheck, Trash2, UploadCloud } from 'lucide-react';
+import { Cable, CheckCircle2, Database, Download, FileSpreadsheet, Route, ShieldCheck, Trash2, UploadCloud } from 'lucide-react';
 
 import { DataTable } from '../components/DataTable';
 import { ErrorState } from '../components/ErrorState';
@@ -12,7 +12,7 @@ import { useDismissibleLayer } from '../lib/useDismissibleLayer';
 import { usePlatform } from '../platform/PlatformContext';
 import type { PlatformClient } from '../platform/types';
 import { backend } from '../services/api';
-import type { Company, ConnectedSystem, DataCatalogEntry, DataMappingRule, GetDataCatalog, GetDataModel, GetDataPreview, GetDataSavedConnection, RuntimeUser } from '../types';
+import type { Company, ConnectedSystem, DataCatalogEntry, DataMappingRule, GetDataCatalog, GetDataModel, GetDataPreview, GetDataSavedConnection, RuntimeUser, SuperAdminImportTemplateCatalog } from '../types';
 
 const acceptedFormats = '.csv,.tsv,.xls,.xlsx,.xlsm,.json,.xml,.txt,.ods';
 
@@ -1738,14 +1738,124 @@ function connectionProfileFor(source: DataSourceOption): ConnectionProfile {
   };
 }
 
+function SuperAdminTemplateDownloads({
+  catalog,
+  onDownload,
+  isDownloading,
+}: {
+  catalog?: SuperAdminImportTemplateCatalog;
+  onDownload: (fileName: string) => void;
+  isDownloading: boolean;
+}) {
+  const groupedTemplates = useMemo(() => {
+    const groups = new Map<string, SuperAdminImportTemplateCatalog['templates']>();
+    (catalog?.templates ?? []).forEach((template) => {
+      const rows = groups.get(template.category) ?? [];
+      rows.push(template);
+      groups.set(template.category, rows);
+    });
+    return Array.from(groups.entries());
+  }, [catalog?.templates]);
+
+  if (!catalog) {
+    return (
+      <div className="mt-4">
+        <Panel title="Super Admin CSV Templates" description="Loading protected template catalog.">
+          <LoadingState label="Loading Super Admin templates" />
+        </Panel>
+      </div>
+    );
+  }
+
+  const governanceFiles = [catalog.manifest_file, catalog.field_dictionary_file];
+
+  return (
+    <div className="mt-4 space-y-4">
+      <Panel
+        title="Super Admin CSV Templates"
+        description="Download aligned CSV templates with shared client, plant, warehouse, module, source, and audit columns before loading data through Data Hub."
+      >
+        <div className="grid gap-3 lg:grid-cols-[0.85fr_1.15fr]">
+          <div className="rounded-[24px] border border-cyan-300/15 bg-cyan-400/8 p-4">
+            <div className="flex items-start gap-3">
+              <div className="rounded-2xl bg-cyan-400/15 p-3 text-cyan-100">
+                <FileSpreadsheet className="h-6 w-6" />
+              </div>
+              <div>
+                <p className="text-lg font-semibold text-white">{catalog.total} module templates</p>
+                <p className="mt-2 text-sm leading-6 text-slate-300">
+                  These files are for Super Admin data alignment only. Every operational CSV carries linking IDs so
+                  module imports can map records consistently across Planning, Inventory, Warehouse, Production,
+                  Maintenance, Quality, Procurement, Sales, Costing, Compliance, portals, reports, documents, Data Hub,
+                  Integration Hub, and AI Intelligence.
+                </p>
+              </div>
+            </div>
+          </div>
+          <div className="grid gap-3 md:grid-cols-2">
+            {governanceFiles.map((file) => (
+              <button
+                key={file.file_name}
+                type="button"
+                className="rounded-[24px] border border-white/10 bg-white/[0.05] p-4 text-left transition hover:border-cyan-300/35 hover:bg-cyan-400/10 disabled:cursor-not-allowed disabled:opacity-60"
+                onClick={() => onDownload(file.file_name)}
+                disabled={isDownloading}
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <p className="font-semibold text-white">{file.file_name}</p>
+                  <Download className="h-4 w-4 text-cyan-200" />
+                </div>
+                <p className="mt-2 text-sm leading-6 text-slate-400">{file.description}</p>
+              </button>
+            ))}
+          </div>
+        </div>
+      </Panel>
+
+      {groupedTemplates.map(([category, templates]) => (
+        <Panel key={category} title={`${category} Templates`} description="Choose the CSV that matches the destination module before upload, mapping, validation, and approval.">
+          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+            {templates.map((template) => (
+              <button
+                key={template.file_name}
+                type="button"
+                className="rounded-[22px] border border-white/10 bg-slate-950/35 p-4 text-left transition hover:-translate-y-0.5 hover:border-cyan-300/35 hover:bg-cyan-400/10 disabled:cursor-not-allowed disabled:opacity-60"
+                onClick={() => onDownload(template.file_name)}
+                disabled={isDownloading}
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-semibold text-white">{template.module}</p>
+                    <p className="mt-1 text-xs uppercase tracking-[0.16em] text-cyan-100">{template.file_name}</p>
+                  </div>
+                  <Download className="h-4 w-4 shrink-0 text-cyan-200" />
+                </div>
+                <p className="mt-3 text-sm leading-6 text-slate-400">{template.description}</p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <StatusBadge status={`${template.column_count} columns`} />
+                  <StatusBadge status={`${template.required_linking_columns.length} required links`} />
+                </div>
+                <p className="mt-3 text-xs leading-5 text-slate-500">
+                  Links: {template.required_linking_columns.join(', ') || 'defined in file'}
+                </p>
+              </button>
+            ))}
+          </div>
+        </Panel>
+      ))}
+    </div>
+  );
+}
+
 export function DataHubPage({ user }: { user: RuntimeUser }) {
   const queryClient = useQueryClient();
   const { state: platformState, selectedClient: platformSelectedClient } = usePlatform();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const canUpload = canUseDataHubUploads(user);
   const canDelete = canPerformAction(user, 'delete');
+  const isSuperAdmin = user.role === 'super_admin';
   const [isDragging, setIsDragging] = useState(false);
-  const [activeView, setActiveView] = useState<'get-data' | 'sources' | 'catalog' | 'mapping' | 'refresh'>('get-data');
+  const [activeView, setActiveView] = useState<'get-data' | 'sources' | 'catalog' | 'mapping' | 'refresh' | 'templates'>('get-data');
   const [selectedSourceValue, setSelectedSourceValue] = useState('excel');
   const [wizardStep, setWizardStep] = useState(1);
   const [selectedTransforms, setSelectedTransforms] = useState<string[]>(['Trim/clean text', 'Change data type', 'Remove duplicates']);
@@ -1799,7 +1909,7 @@ export function DataHubPage({ user }: { user: RuntimeUser }) {
     sync_mode: 'manual',
     auth_method: 'OAuth2',
   });
-  const [companies, systems, quality, readiness, catalog, mappings, uploads, getDataCatalog, getDataConnections, getDataModel, getDataRefreshHistory, getDataErrors, getDataAudit] = useQueries({
+  const [companies, systems, quality, readiness, catalog, mappings, uploads, getDataCatalog, getDataConnections, getDataModel, getDataRefreshHistory, getDataErrors, getDataAudit, superAdminTemplates] = useQueries({
     queries: [
       { queryKey: ['companies'], queryFn: backend.companies },
       { queryKey: ['connected-systems'], queryFn: backend.connectedSystems },
@@ -1814,6 +1924,7 @@ export function DataHubPage({ user }: { user: RuntimeUser }) {
       { queryKey: ['get-data-refresh-history'], queryFn: backend.getDataRefreshHistory },
       { queryKey: ['get-data-errors'], queryFn: backend.getDataErrors },
       { queryKey: ['get-data-audit'], queryFn: backend.getDataAudit },
+      { queryKey: ['super-admin-import-templates'], queryFn: backend.superAdminImportTemplates, enabled: isSuperAdmin },
     ],
   });
 
@@ -1998,6 +2109,7 @@ export function DataHubPage({ user }: { user: RuntimeUser }) {
       invalidate();
     },
   });
+  const downloadTemplate = useMutation({ mutationFn: backend.downloadSuperAdminImportTemplate });
   const testGetDataConnection = useMutation({
     mutationFn: backend.testGetDataConnection,
     onSuccess: () => {
@@ -2053,11 +2165,11 @@ export function DataHubPage({ user }: { user: RuntimeUser }) {
     };
   }, [getDataConnectionRows, getDataModel.data, isTargetCompanyRecord]);
 
-  if ([companies, systems, quality, readiness, catalog, mappings, uploads, getDataCatalog, getDataConnections, getDataModel, getDataRefreshHistory, getDataErrors, getDataAudit].some((query) => query.isLoading)) {
+  if ([companies, systems, quality, readiness, catalog, mappings, uploads, getDataCatalog, getDataConnections, getDataModel, getDataRefreshHistory, getDataErrors, getDataAudit, superAdminTemplates].some((query) => query.isLoading)) {
     return <LoadingState label="Loading company-scoped Manufacturing Data Hub responses" />;
   }
 
-  const firstError = [companies, systems, quality, readiness, catalog, mappings, uploads, getDataCatalog, getDataConnections, getDataModel, getDataRefreshHistory, getDataErrors, getDataAudit].find((query) => query.isError)?.error;
+  const firstError = [companies, systems, quality, readiness, catalog, mappings, uploads, getDataCatalog, getDataConnections, getDataModel, getDataRefreshHistory, getDataErrors, getDataAudit, superAdminTemplates].find((query) => query.isError)?.error;
   if (firstError) {
     return <ErrorState error={firstError} title="Manufacturing Data Hub integration failed" />;
   }
@@ -2334,6 +2446,7 @@ export function DataHubPage({ user }: { user: RuntimeUser }) {
           { key: 'catalog', label: 'Catalog & Uploads' },
           { key: 'mapping', label: 'Field Mapping' },
           { key: 'refresh', label: 'Refresh / Logs' },
+          ...(isSuperAdmin ? [{ key: 'templates', label: 'Super Admin Templates' }] : []),
         ].map((item) => (
           <button
             key={item.key}
@@ -2713,6 +2826,14 @@ export function DataHubPage({ user }: { user: RuntimeUser }) {
             </div>
           </Panel>
         </div>
+      ) : null}
+
+      {activeView === 'templates' && isSuperAdmin ? (
+        <SuperAdminTemplateDownloads
+          catalog={superAdminTemplates.data}
+          onDownload={(fileName) => downloadTemplate.mutate(fileName)}
+          isDownloading={downloadTemplate.isPending}
+        />
       ) : null}
 
       <div className="mt-4 rounded-2xl border border-white/10 bg-slate-900/45 p-4">

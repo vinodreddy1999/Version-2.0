@@ -32,6 +32,7 @@ import type {
   PasswordPolicy,
   RuntimeLoginResult,
   RuntimeUser,
+  SuperAdminImportTemplateCatalog,
 } from '../types';
 import type {
   DataAccessPolicy,
@@ -214,6 +215,22 @@ export const backend = {
     return response.data.data;
   },
   uploads: () => getEnvelope<DataHubUpload[]>('/manufacturing-data-hub/uploads'),
+  superAdminImportTemplates: () => getEnvelope<SuperAdminImportTemplateCatalog>('/manufacturing-data-hub/super-admin/templates'),
+  downloadSuperAdminImportTemplate: async (fileName: string) => {
+    const response = await api.get(`/manufacturing-data-hub/super-admin/templates/${encodeURIComponent(fileName)}`, {
+      responseType: 'blob',
+    });
+    const contentType = response.headers['content-type'];
+    const blob = new Blob([response.data], { type: typeof contentType === 'string' ? contentType : 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = fileName;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.URL.revokeObjectURL(url);
+  },
   uploadFile: async (file: File, companyId?: string, plant?: { plantId?: string; plantName?: string }) => {
     const form = new FormData();
     form.append('file', file);
