@@ -26,7 +26,7 @@ import {
 import { LazyChunkBoundary } from '../components/LazyChunkBoundary';
 import { Breadcrumbs } from '../components/Breadcrumbs';
 import { LoadingState } from '../components/LoadingState';
-import { canAccessModule, canAccessPage, canAccessSection, firstAllowedPath } from '../lib/rbac';
+import { canAccessAppSection, canAccessModule, canAccessPage, canViewFinancialData, firstAllowedPath } from '../lib/rbac';
 import { useDismissibleLayer } from '../lib/useDismissibleLayer';
 import { apiConfig, backend } from '../services/api';
 import type { RuntimeUser } from '../types';
@@ -712,7 +712,7 @@ function AuthenticatedApp({
                <Route path="/data-hub" element={<ProtectedRoute user={user} section="data-hub" fallbackPath={allowedFallbackPath}><DataHubPage user={user} /></ProtectedRoute>} />
               <Route path="/factorypulse" element={<ProtectedRoute user={user} section="operations" fallbackPath={allowedFallbackPath}><FactoryPulsePage user={user} /></ProtectedRoute>} />
               <Route path="/operations" element={<ProtectedRoute user={user} section="operations" fallbackPath={allowedFallbackPath}><OperationsPage user={user} /></ProtectedRoute>} />
-              <Route path="/intelligence" element={<ProtectedRoute user={user} section="intelligence" fallbackPath={allowedFallbackPath}><IntelligencePage /></ProtectedRoute>} />
+              <Route path="/intelligence" element={<ProtectedRoute user={user} section="intelligence" fallbackPath={allowedFallbackPath}><IntelligencePage user={user} /></ProtectedRoute>} />
               <Route path="/planning/*" element={<ModuleRoute user={user} moduleName="Planning" fallbackPath={allowedFallbackPath}><PlanningModulePage user={user} /></ModuleRoute>} />
               <Route path="/inventory/*" element={<ModuleRoute user={user} moduleName="Inventory" fallbackPath={allowedFallbackPath}><InventoryModulePage user={user} /></ModuleRoute>} />
               <Route path="/warehouse/*" element={<ModuleRoute user={user} moduleName="Warehouse" fallbackPath={allowedFallbackPath}><WarehouseModulePage user={user} /></ModuleRoute>} />
@@ -725,9 +725,9 @@ function AuthenticatedApp({
               <Route path="/compliance" element={<ModuleRoute user={user} moduleName="Compliance" fallbackPath={allowedFallbackPath}><ModuleWorkspacePage moduleKey="compliance" user={user} /></ModuleRoute>} />
               <Route path="/customer-portal" element={<ModuleRoute user={user} moduleName="Customer Portal" fallbackPath={allowedFallbackPath}><ModuleWorkspacePage moduleKey="customer-portal" user={user} /></ModuleRoute>} />
               <Route path="/supplier-portal" element={<ModuleRoute user={user} moduleName="Supplier Portal" fallbackPath={allowedFallbackPath}><ModuleWorkspacePage moduleKey="supplier-portal" user={user} /></ModuleRoute>} />
-              <Route path="/reports" element={<Navigate to="/workspace/dashboards/business-impact" replace />} />
+              <Route path="/reports" element={<Navigate to={canViewFinancialData(permissionContext) ? '/workspace/dashboards/business-impact' : '/workspace/dashboards/executive'} replace />} />
               <Route path="/documents" element={<ModuleRoute user={user} moduleName="Document Management" fallbackPath={allowedFallbackPath}><ModuleWorkspacePage moduleKey="documents" user={user} /></ModuleRoute>} />
-              <Route path="/impact/:module/:metric" element={<ProtectedRoute user={user} section="operations" fallbackPath={allowedFallbackPath}><ImpactDrilldownPage /></ProtectedRoute>} />
+              <Route path="/impact/:module/:metric" element={<ProtectedRoute user={user} section="operations" fallbackPath={allowedFallbackPath}>{canViewFinancialData(permissionContext) ? <ImpactDrilldownPage /> : <Navigate to={allowedFallbackPath} replace />}</ProtectedRoute>} />
               </Routes>
             </Suspense>
           </LazyChunkBoundary>
@@ -749,6 +749,7 @@ function ProtectedRoute({
   fallbackPath: string;
   children: ReactNode;
 }) {
+  const { selectedClient, platformUser, isPlatformContext } = usePlatform();
   const enterpriseAccess = useEnterpriseAccess();
   const capabilityMap = {
     admin: ['organization.view', 'organization.manage', 'users.view', 'roles.manage', 'settings.view'],
@@ -759,7 +760,7 @@ function ProtectedRoute({
   if (
     enterpriseAccess.isExplicitAccess
       ? !enterpriseAccess.canAny(...capabilityMap[section])
-      : !canAccessSection(user, section)
+      : !canAccessAppSection({ user, selectedClient, platformUser, isPlatformContext }, section)
   ) {
     return <Navigate to={fallbackPath} replace />;
   }

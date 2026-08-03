@@ -10,6 +10,7 @@ import { ScrollableTableFrame } from '../components/ScrollableTableFrame';
 import { StatCard } from '../components/StatCard';
 import { StatusBadge } from '../components/StatusBadge';
 import { formatCurrency } from '../lib/format';
+import { canAccessModule, canViewFinancialData, filterFinancialTableRows, filterScopedTableRows, getUserDataScope, type PermissionContext } from '../lib/rbac';
 import { useDismissibleLayer } from '../lib/useDismissibleLayer';
 import { usePlatform } from '../platform/PlatformContext';
 import {
@@ -52,11 +53,11 @@ const productionNav: Array<{ section: ProductionSection; label: string; path: st
 const sectionByPath = Object.fromEntries(productionNav.map((item) => [item.path, item.section])) as Record<string, ProductionSection>;
 
 export function ProductionModulePage({ user }: { user: RuntimeUser }) {
-  void user;
   const { selectedClient, platformUser } = usePlatform();
   const location = useLocation();
   const section = sectionByPath[location.pathname] ?? 'dashboard';
-  const productionAllowed = platformUser.assignedModules.includes('Production') && (!selectedClient || selectedClient.enabledModules.includes('Production'));
+  const accessContext = { user, selectedClient, platformUser };
+  const productionAllowed = canAccessModule(accessContext, 'Production');
 
   if (!productionAllowed) {
     return (
@@ -76,35 +77,41 @@ export function ProductionModulePage({ user }: { user: RuntimeUser }) {
         moduleName="Production"
         description="Company-level production execution, schedule adherence, output, efficiency, downtime, yield, and scrap."
       />
-      <ProductionSectionContent section={section} />
+      <ProductionSectionContent section={section} accessContext={accessContext} />
     </div>
   );
 }
 
-function ProductionSectionContent({ section }: { section: ProductionSection }) {
-  if (section === 'dashboard') return <ProductionDashboard />;
-  if (section === 'orders') return <ProductionRegister title="Production Orders" description="Create, release, close, cancel, and monitor manufacturing orders." rows={orderRows()} searchKeys={['Production Order Number', 'Product', 'Plant', 'Line']} action="Create Order" />;
-  if (section === 'schedule') return <ProductionRegister title="Production Schedule" description="Daily, weekly, and monthly manufacturing schedule control." rows={scheduleRows()} searchKeys={['Schedule ID', 'Production Order', 'Product', 'Line', 'Shift']} action="Create Schedule" />;
-  if (section === 'work-orders') return <ProductionRegister title="Work Orders" description="Track production execution tasks, operators, work centers, and completion." rows={workOrderRows()} searchKeys={['Work Order ID', 'Production Order', 'Operation', 'Work Center', 'Operator']} action="Create Work Order" />;
-  if (section === 'shifts') return <ProductionRegister title="Shift Management" description="Monitor shift productivity, efficiency, downtime, and performance ranking." rows={shiftRows()} searchKeys={['Shift', 'Line']} action="Create Shift Record" />;
-  if (section === 'lines') return <ProductionRegister title="Production Lines" description="Measure line output, utilization, downtime, OEE, and ranking." rows={lineRows()} searchKeys={['Line']} action="Create Line Record" />;
-  if (section === 'machines') return <ProductionRegister title="Machine Monitoring" description="Monitor runtime, downtime, availability, utilization, and machine OEE." rows={machineRows()} searchKeys={['Machine', 'Line']} action="Create Machine Record" />;
-  if (section === 'tracking') return <ProductionRegister title="Production Tracking" description="Real-time plan, actual, remaining quantity, completion percent, and forecast." rows={trackingRows()} searchKeys={['Production Order', 'Product', 'Status']} action="Update Production Progress" />;
-  if (section === 'downtime') return <DowntimePanel />;
+function ProductionSectionContent({ section, accessContext }: { section: ProductionSection; accessContext: PermissionContext }) {
+  const canViewFinancial = canViewFinancialData(accessContext);
+  if (section === 'dashboard') return <ProductionDashboard accessContext={accessContext} />;
+  if (section === 'orders') return <ProductionRegister accessContext={accessContext} title="Production Orders" description="Create, release, close, cancel, and monitor manufacturing orders." rows={orderRows()} searchKeys={['Production Order Number', 'Product', 'Plant', 'Line']} action="Create Order" />;
+  if (section === 'schedule') return <ProductionRegister accessContext={accessContext} title="Production Schedule" description="Daily, weekly, and monthly manufacturing schedule control." rows={scheduleRows()} searchKeys={['Schedule ID', 'Production Order', 'Product', 'Line', 'Shift']} action="Create Schedule" />;
+  if (section === 'work-orders') return <ProductionRegister accessContext={accessContext} title="Work Orders" description="Track production execution tasks, operators, work centers, and completion." rows={workOrderRows()} searchKeys={['Work Order ID', 'Production Order', 'Operation', 'Work Center', 'Operator']} action="Create Work Order" />;
+  if (section === 'shifts') return <ProductionRegister accessContext={accessContext} title="Shift Management" description="Monitor shift productivity, efficiency, downtime, and performance ranking." rows={shiftRows()} searchKeys={['Shift', 'Line']} action="Create Shift Record" />;
+  if (section === 'lines') return <ProductionRegister accessContext={accessContext} title="Production Lines" description="Measure line output, utilization, downtime, OEE, and ranking." rows={lineRows()} searchKeys={['Line']} action="Create Line Record" />;
+  if (section === 'machines') return <ProductionRegister accessContext={accessContext} title="Machine Monitoring" description="Monitor runtime, downtime, availability, utilization, and machine OEE." rows={machineRows()} searchKeys={['Machine', 'Line']} action="Create Machine Record" />;
+  if (section === 'tracking') return <ProductionRegister accessContext={accessContext} title="Production Tracking" description="Real-time plan, actual, remaining quantity, completion percent, and forecast." rows={trackingRows()} searchKeys={['Production Order', 'Product', 'Status']} action="Update Production Progress" />;
+  if (section === 'downtime') return <DowntimePanel accessContext={accessContext} />;
   if (section === 'oee') return <OeePanel />;
-  if (section === 'yield') return <ProductionRegister title="Yield Analysis" description="Input quantity, output quantity, yield percent, and yield loss." rows={yieldRows()} searchKeys={['Product', 'Status']} action="Create Yield Record" />;
-  if (section === 'scrap') return <ProductionRegister title="Scrap Analysis" description="Scrap quantity, value, reason, cost trend, and reduction opportunities." rows={scrapRows()} searchKeys={['Product', 'Scrap Reason', 'Status']} action="Create Scrap Record" />;
+  if (section === 'yield') return <ProductionRegister accessContext={accessContext} title="Yield Analysis" description="Input quantity, output quantity, yield percent, and yield loss." rows={yieldRows()} searchKeys={['Product', 'Status']} action="Create Yield Record" />;
+  if (section === 'scrap') return <ProductionRegister accessContext={accessContext} title="Scrap Analysis" description={canViewFinancial ? 'Scrap quantity, value, reason, cost trend, and reduction opportunities.' : 'Scrap quantity, reason, trend, and reduction opportunities.'} rows={scrapRows()} searchKeys={['Product', 'Scrap Reason', 'Status']} action="Create Scrap Record" />;
   if (section === 'reports') return <ReportsPanel />;
-  return <ProductionRegister title="Production Audit" description="Business-friendly audit history for production execution changes." rows={auditRows()} searchKeys={['Timestamp', 'User', 'Action', 'Entity']} action="Export Audit" />;
+  return <ProductionRegister accessContext={accessContext} title="Production Audit" description="Business-friendly audit history for production execution changes." rows={auditRows()} searchKeys={['Timestamp', 'User', 'Action', 'Entity']} action="Export Audit" />;
 }
 
-function ProductionDashboard() {
-  const planned = productionOrders.reduce((sum, item) => sum + item.plannedQty, 0);
-  const actual = productionOrders.reduce((sum, item) => sum + item.producedQty, 0);
-  const downtime = downtimeRecords.reduce((sum, item) => sum + item.duration, 0);
+function ProductionDashboard({ accessContext }: { accessContext: PermissionContext }) {
+  const canViewFinancial = canViewFinancialData(accessContext);
+  const scope = getUserDataScope(accessContext.user, accessContext.platformUser ?? undefined);
+  const scopedOrders = scope.plant ? productionOrders.filter((item) => item.plant === scope.plant) : productionOrders;
+  const scopedLines = scope.plant ? lineRecords.filter((item) => scopedOrders.some((order) => order.line === item.line)) : lineRecords;
+  const scopedDowntime = scope.plant ? downtimeRecords.filter((item) => scopedLines.some((line) => line.line === item.line)) : downtimeRecords;
+  const planned = scopedOrders.reduce((sum, item) => sum + item.plannedQty, 0);
+  const actual = scopedOrders.reduce((sum, item) => sum + item.producedQty, 0);
+  const downtime = scopedDowntime.reduce((sum, item) => sum + item.duration, 0);
   const oee = Math.round(oeeRecords[0].oee);
   const avgMachineUtilization = Math.round(machineRecords.reduce((sum, item) => sum + item.availability, 0) / machineRecords.length);
-  const avgLineUtilization = Math.round(lineRecords.reduce((sum, item) => sum + item.utilization, 0) / lineRecords.length);
+  const avgLineUtilization = scopedLines.length ? Math.round(scopedLines.reduce((sum, item) => sum + item.utilization, 0) / scopedLines.length) : 0;
   const avgYield = Math.round(yieldRecords.reduce((sum, item) => sum + item.yield, 0) / yieldRecords.length);
   const totalScrapQty = scrapRecords.reduce((sum, item) => sum + item.scrapQty, 0);
   const achievement = Math.round((actual / planned) * 100);
@@ -125,18 +132,19 @@ function ProductionDashboard() {
       </div>
       <ProductionFilters />
       <div className="grid gap-5 xl:grid-cols-2">
-        <Panel title="Plan vs Actual Production" description="Planned and actual production by order."><ProductionBarChart data={productionOrders.slice(0, 7).map((item) => ({ name: item.orderNo, planned: item.plannedQty, actual: item.producedQty }))} bars={['planned', 'actual']} /></Panel>
-        <Panel title="Production by Line" description="Actual output and OEE by line."><ProductionBarChart data={lineRecords.map((item) => ({ name: item.line, output: item.actualOutput, oee: item.oee }))} bars={['output', 'oee']} /></Panel>
+        <Panel title="Plan vs Actual Production" description="Planned and actual production by order."><ProductionBarChart data={scopedOrders.slice(0, 7).map((item) => ({ name: item.orderNo, planned: item.plannedQty, actual: item.producedQty }))} bars={['planned', 'actual']} /></Panel>
+        <Panel title="Production by Line" description="Actual output and OEE by line."><ProductionBarChart data={scopedLines.map((item) => ({ name: item.line, output: item.actualOutput, oee: item.oee }))} bars={['output', 'oee']} /></Panel>
         <Panel title="Production by Shift" description="Shift achievement and OEE."><ProductionBarChart data={shiftRecords.map((item) => ({ name: `${item.shift} ${item.line}`, achievement: item.achievement, oee: item.oee }))} bars={['achievement', 'oee']} /></Panel>
         <Panel title="OEE Trend" description="Manufacturing efficiency trend."><ProductionLineChart data={[{ name: 'Jan', value: 62 }, { name: 'Feb', value: 66 }, { name: 'Mar', value: 70 }, { name: 'Apr', value: 73 }, { name: 'May', value: 76 }, { name: 'Jun', value: 78 }]} /></Panel>
-        <Panel title="Downtime Analysis" description="Downtime duration by cause."><ProductionBarChart data={downtimeByCause()} bars={['hours']} /></Panel>
-        <Panel title="Yield and Scrap Analysis" description="Yield percent and scrap cost risk."><ProductionDataTable rows={[...yieldRows().slice(0, 4), ...scrapRows().slice(0, 4)]} /></Panel>
+        <Panel title="Downtime Analysis" description="Downtime duration by cause."><ProductionBarChart data={downtimeByCause(scopedDowntime)} bars={['hours']} /></Panel>
+        <Panel title="Yield and Scrap Analysis" description={canViewFinancial ? 'Yield percent and scrap cost risk.' : 'Yield percent and scrap quantity risk.'}><ProductionDataTable accessContext={accessContext} rows={[...yieldRows().slice(0, 4), ...scrapRows().slice(0, 4)]} /></Panel>
       </div>
     </div>
   );
 }
 
-function DowntimePanel() {
+function DowntimePanel({ accessContext }: { accessContext: PermissionContext }) {
+  const canViewFinancial = canViewFinancialData(accessContext);
   const total = downtimeRecords.reduce((sum, item) => sum + item.duration, 0);
   const open = downtimeRecords.filter((item) => item.status === 'Open').length;
   const cost = Math.round(total * 18500);
@@ -145,7 +153,7 @@ function DowntimePanel() {
       <div className="grid gap-4 md:grid-cols-3">
         <StatCard label="Total Downtime" value={`${total.toFixed(1)} hrs`} helper="Across machines" accent="amber" />
         <StatCard label="Open Downtime" value={open} helper="Needs action" accent="amber" />
-        <StatCard label="Downtime Cost" value={formatCurrency(cost, productionCompany.currency)} helper="Estimated cost" accent="violet" />
+        {canViewFinancial ? <StatCard label="Downtime Cost" value={formatCurrency(cost, productionCompany.currency)} helper="Estimated cost" accent="violet" /> : null}
       </div>
       <Panel title="Downtime Management" description="Track production losses by machine, cause, duration, root cause, and status.">
         <ProductionBarChart data={downtimeByCause()} bars={['hours']} />
@@ -172,7 +180,7 @@ function OeePanel() {
   );
 }
 
-function ProductionRegister({ title, description, rows, searchKeys, action }: { title: string; description: string; rows: TableRow[]; searchKeys: string[]; action: string }) {
+function ProductionRegister({ title, description, rows, searchKeys, action, accessContext }: { title: string; description: string; rows: TableRow[]; searchKeys: string[]; action: string; accessContext: PermissionContext }) {
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState('');
   const [drawer, setDrawer] = useState(false);
@@ -197,15 +205,17 @@ function ProductionRegister({ title, description, rows, searchKeys, action }: { 
           </select>
           <button className="form-button-subtle" onClick={() => { setSearch(''); setStatus(''); }}>Clear</button>
         </div>
-        <ProductionDataTable rows={filteredRows} />
+        <ProductionDataTable accessContext={accessContext} rows={filteredRows} />
       </Panel>
       {drawer ? <ProductionFormDrawer title={action} onClose={() => setDrawer(false)} /> : null}
     </div>
   );
 }
 
-function ProductionDataTable({ rows }: { rows: TableRow[] }) {
-  const headers = rows[0] ? Object.keys(rows[0]) : [];
+function ProductionDataTable({ rows, accessContext }: { rows: TableRow[]; accessContext?: PermissionContext }) {
+  const scopedRows = accessContext ? filterScopedTableRows(rows, accessContext) : rows;
+  const visibleRows = accessContext ? filterFinancialTableRows(scopedRows, accessContext) : scopedRows;
+  const headers = visibleRows[0] ? Object.keys(visibleRows[0]) : [];
   return (
     <ScrollableTableFrame count={rows.length}>
       <table className="min-w-[1120px] w-full text-sm">
@@ -215,7 +225,7 @@ function ProductionDataTable({ rows }: { rows: TableRow[] }) {
           </tr>
         </thead>
         <tbody>
-          {rows.map((row, index) => (
+          {visibleRows.map((row, index) => (
             <tr key={String(Object.values(row)[0] ?? index)} className="border-b border-white/10 hover:bg-white/[0.04]">
               {headers.map((header) => <td key={header} className="px-3 py-3 text-slate-300">{header === 'Status' && typeof row[header] === 'string' ? <StatusBadge status={String(row[header])} /> : row[header]}</td>)}
             </tr>
@@ -326,8 +336,8 @@ function yieldRows() { return yieldRecords.map((item) => ({ Product: item.produc
 function scrapRows() { return scrapRecords.map((item) => ({ Product: item.product, 'Scrap Qty': item.scrapQty, 'Scrap Value': formatCurrency(item.scrapValue, productionCompany.currency), 'Scrap Reason': item.reason, Date: item.date, Status: item.status, Actions: <RowActions labels={['Review', 'Create CAPA', 'Export']} /> })); }
 function auditRows() { return auditEntries.map((item) => ({ Timestamp: item.timestamp, User: item.user, Action: item.action, Entity: item.entity, 'Previous Value': item.previousValue, 'New Value': item.newValue, Reason: item.reason })); }
 
-function downtimeByCause() {
-  return Object.values(downtimeRecords.reduce<Record<string, { name: string; hours: number }>>((acc, item) => {
+function downtimeByCause(source = downtimeRecords) {
+  return Object.values(source.reduce<Record<string, { name: string; hours: number }>>((acc, item) => {
     acc[item.type] = acc[item.type] ?? { name: item.type, hours: 0 };
     acc[item.type].hours = Math.round((acc[item.type].hours + item.duration) * 10) / 10;
     return acc;

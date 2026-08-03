@@ -12,7 +12,7 @@ import { ScrollableTableFrame } from '../components/ScrollableTableFrame';
 import { StatCard } from '../components/StatCard';
 import { StatusBadge } from '../components/StatusBadge';
 import { applyModuleFilters, type ModuleFilterValues } from '../lib/moduleFilters';
-import { getUserDataScope, scopeFilterDefaults, scopeOptions } from '../lib/rbac';
+import { canAccessModule, filterScopedTableRows, getUserDataScope, scopeFilterDefaults, scopeOptions, type PermissionContext } from '../lib/rbac';
 import { useDismissibleLayer } from '../lib/useDismissibleLayer';
 import { usePlatform } from '../platform/PlatformContext';
 import type { RuntimeUser } from '../types';
@@ -54,11 +54,11 @@ const warehouseNav: Array<{ section: WarehouseSection; label: string; path: stri
 const sectionByPath = Object.fromEntries(warehouseNav.map((item) => [item.path, item.section])) as Record<string, WarehouseSection>;
 
 export function WarehouseModulePage({ user }: { user: RuntimeUser }) {
-  void user;
   const { selectedClient, platformUser } = usePlatform();
   const location = useLocation();
   const section = sectionByPath[location.pathname] ?? 'dashboard';
-  const warehouseAllowed = platformUser.assignedModules.includes('Warehouse') && (!selectedClient || selectedClient.enabledModules.includes('Warehouse'));
+  const accessContext = { user, selectedClient, platformUser };
+  const warehouseAllowed = canAccessModule(accessContext, 'Warehouse');
 
   if (!warehouseAllowed) {
     return (
@@ -78,25 +78,25 @@ export function WarehouseModulePage({ user }: { user: RuntimeUser }) {
         moduleName="Warehouse"
         description="Company-level execution for receiving, putaway, storage, picking, packing, dispatch, utilization, labor, and warehouse risk."
       />
-      <WarehouseSectionContent section={section} />
+      <WarehouseSectionContent section={section} user={user} accessContext={accessContext} />
     </div>
   );
 }
 
-function WarehouseSectionContent({ section }: { section: WarehouseSection }) {
-  if (section === 'dashboard') return <WarehouseDashboard />;
-  if (section === 'receiving') return <WarehouseRegister title="Receiving" description="Inbound receipts from purchase orders, production receipts, transfers, and customer returns." rows={receivingRows()} searchKeys={['Receipt ID', 'Source Reference', 'Supplier / Source', 'Item']} action="Create Receipt" />;
-  if (section === 'putaway') return <WarehouseRegister title="Putaway" description="Move received inventory into storage zones, racks, shelves, and bins." rows={putawayRows()} searchKeys={['Putaway Task ID', 'Receipt ID', 'Item', 'Suggested Bin']} action="Create Putaway Task" />;
-  if (section === 'bins') return <WarehouseRegister title="Bin Management" description="Manage exact storage hierarchy, occupancy, capacity, and location availability." rows={binRows()} searchKeys={['Bin ID', 'Warehouse', 'Zone', 'Bin Code', 'Storage Type']} action="Create Bin" />;
-  if (section === 'picking') return <WarehouseRegister title="Picking" description="Pick inventory for sales, production, maintenance, and transfer demand." rows={pickingRows()} searchKeys={['Pick Task ID', 'Source Reference', 'Item', 'Picker']} action="Create Pick Task" />;
-  if (section === 'packing') return <WarehouseRegister title="Packing" description="Pack picked inventory, validate package details, and create dispatch-ready records." rows={packingRows()} searchKeys={['Packing ID', 'Pick Task ID', 'Order / Source Reference', 'Packed By']} action="Create Packing Record" />;
-  if (section === 'dispatch') return <WarehouseRegister title="Dispatch" description="Dispatch packed goods to customers, plants, warehouses, departments, and production lines." rows={dispatchRows()} searchKeys={['Dispatch ID', 'Destination', 'Source Reference', 'Carrier', 'Vehicle']} action="Create Dispatch" />;
-  if (section === 'movements') return <WarehouseRegister title="Internal Movements" description="Track bin-to-bin, zone-to-zone, warehouse, replenishment, and quality-hold movement." rows={movementRows()} searchKeys={['Movement ID', 'Item', 'From Location', 'To Location']} action="Create Movement" />;
-  if (section === 'cycle-counts') return <WarehouseRegister title="Cycle Counts" description="Verify bin and location accuracy, capture variance, and prepare inventory corrections." rows={cycleRows()} searchKeys={['Count ID', 'Bin', 'Item', 'Counted By']} action="Create Count" />;
-  if (section === 'utilization') return <UtilizationPanel />;
-  if (section === 'labor') return <LaborPanel />;
-  if (section === 'reports') return <ReportsPanel />;
-  return <WarehouseRegister title="Warehouse Audit" description="Business-friendly audit history for warehouse execution changes." rows={auditRows()} searchKeys={['Timestamp', 'User', 'Action', 'Warehouse Area', 'Reference ID']} action="Export Audit" />;
+function WarehouseSectionContent({ section, user, accessContext }: { section: WarehouseSection; user: RuntimeUser; accessContext: PermissionContext }) {
+  if (section === 'dashboard') return <WarehouseDashboard user={user} accessContext={accessContext} />;
+  if (section === 'receiving') return <WarehouseRegister user={user} accessContext={accessContext} title="Receiving" description="Inbound receipts from purchase orders, production receipts, transfers, and customer returns." rows={receivingRows()} searchKeys={['Receipt ID', 'Source Reference', 'Supplier / Source', 'Item']} action="Create Receipt" />;
+  if (section === 'putaway') return <WarehouseRegister user={user} accessContext={accessContext} title="Putaway" description="Move received inventory into storage zones, racks, shelves, and bins." rows={putawayRows()} searchKeys={['Putaway Task ID', 'Receipt ID', 'Item', 'Suggested Bin']} action="Create Putaway Task" />;
+  if (section === 'bins') return <WarehouseRegister user={user} accessContext={accessContext} title="Bin Management" description="Manage exact storage hierarchy, occupancy, capacity, and location availability." rows={binRows()} searchKeys={['Bin ID', 'Warehouse', 'Zone', 'Bin Code', 'Storage Type']} action="Create Bin" />;
+  if (section === 'picking') return <WarehouseRegister user={user} accessContext={accessContext} title="Picking" description="Pick inventory for sales, production, maintenance, and transfer demand." rows={pickingRows()} searchKeys={['Pick Task ID', 'Source Reference', 'Item', 'Picker']} action="Create Pick Task" />;
+  if (section === 'packing') return <WarehouseRegister user={user} accessContext={accessContext} title="Packing" description="Pack picked inventory, validate package details, and create dispatch-ready records." rows={packingRows()} searchKeys={['Packing ID', 'Pick Task ID', 'Order / Source Reference', 'Packed By']} action="Create Packing Record" />;
+  if (section === 'dispatch') return <WarehouseRegister user={user} accessContext={accessContext} title="Dispatch" description="Dispatch packed goods to customers, plants, warehouses, departments, and production lines." rows={dispatchRows()} searchKeys={['Dispatch ID', 'Destination', 'Source Reference', 'Carrier', 'Vehicle']} action="Create Dispatch" />;
+  if (section === 'movements') return <WarehouseRegister user={user} accessContext={accessContext} title="Internal Movements" description="Track bin-to-bin, zone-to-zone, warehouse, replenishment, and quality-hold movement." rows={movementRows()} searchKeys={['Movement ID', 'Item', 'From Location', 'To Location']} action="Create Movement" />;
+  if (section === 'cycle-counts') return <WarehouseRegister user={user} accessContext={accessContext} title="Cycle Counts" description="Verify bin and location accuracy, capture variance, and prepare inventory corrections." rows={cycleRows()} searchKeys={['Count ID', 'Bin', 'Item', 'Counted By']} action="Create Count" />;
+  if (section === 'utilization') return <UtilizationPanel accessContext={accessContext} />;
+  if (section === 'labor') return <LaborPanel accessContext={accessContext} />;
+  if (section === 'reports') return <ReportsPanel user={user} />;
+  return <WarehouseRegister user={user} accessContext={accessContext} title="Warehouse Audit" description="Business-friendly audit history for warehouse execution changes." rows={auditRows()} searchKeys={['Timestamp', 'User', 'Action', 'Warehouse Area', 'Reference ID']} action="Export Audit" />;
 }
 
 const warehouseCategoryOptions = ['Finished Goods', 'Raw Material', 'Spare Parts', 'Consumables'];
@@ -167,9 +167,9 @@ const cycleCountFilterMap = {
   Owner: 'countedBy' as const,
 };
 
-function WarehouseDashboard() {
+function WarehouseDashboard({ user, accessContext }: { user: RuntimeUser; accessContext: PermissionContext }) {
   const { platformUser } = usePlatform();
-  const [filters, setFilters] = useState<ModuleFilterValues>(() => scopeFilterDefaults(userFromPlatform(platformUser), platformUser));
+  const [filters, setFilters] = useState<ModuleFilterValues>(() => scopeFilterDefaults(user, platformUser));
   const filteredReceiving = useMemo(
     () => applyModuleFilters(receivingRecords, filters, receivingFilterMap),
     [filters],
@@ -231,20 +231,20 @@ function WarehouseDashboard() {
         <StatCard label="Open Warehouse Tasks" value={openTasks} helper="Putaway, picks, moves" accent="violet" />
         <StatCard label="Warehouse Health Score" value="88%" helper="Risk adjusted score" accent="emerald" />
       </div>
-      <WarehouseFilters filters={filters} onChange={setFilters} />
+      <WarehouseFilters filters={filters} onChange={setFilters} user={user} />
       <div className="grid gap-5 xl:grid-cols-2">
         <Panel title="Receiving Status" description="Expected, received, pending, and delayed inbound quantities."><WarehouseBarChart data={receivingStatusChart(filteredReceiving)} bars={['received', 'pending', 'delayed']} /></Panel>
-        <Panel title="Putaway Queue" description="Open putaway tasks by receipt, item, suggested bin, and priority."><WarehouseDataTable rows={putawayRows(filteredPutaway).filter((row) => row.Status !== 'Completed')} /></Panel>
+        <Panel title="Putaway Queue" description="Open putaway tasks by receipt, item, suggested bin, and priority."><WarehouseDataTable accessContext={accessContext} rows={putawayRows(filteredPutaway).filter((row) => row.Status !== 'Completed')} /></Panel>
         <Panel title="Bin Utilization" description="Capacity, occupied space, available space, and utilization by zone."><WarehouseBarChart data={filteredUtilization.map((item) => ({ name: item.zone, occupied: item.occupied, available: item.available }))} bars={['occupied', 'available']} /></Panel>
-        <Panel title="Picking Performance" description="Pick task accuracy and status by order and picker."><WarehouseDataTable rows={pickingRows(filteredPicking).slice(0, 6)} /></Panel>
-        <Panel title="Dispatch Readiness" description="Packed and pending items by dispatch date."><WarehouseDataTable rows={dispatchRows(filteredDispatch).slice(0, 6)} /></Panel>
+        <Panel title="Picking Performance" description="Pick task accuracy and status by order and picker."><WarehouseDataTable accessContext={accessContext} rows={pickingRows(filteredPicking).slice(0, 6)} /></Panel>
+        <Panel title="Dispatch Readiness" description="Packed and pending items by dispatch date."><WarehouseDataTable accessContext={accessContext} rows={dispatchRows(filteredDispatch).slice(0, 6)} /></Panel>
         <Panel title="Warehouse Performance Trend" description="Handling time and readiness trend."><WarehouseLineChart data={[{ name: 'Jan', value: 70 }, { name: 'Feb', value: 74 }, { name: 'Mar', value: 79 }, { name: 'Apr', value: 83 }, { name: 'May', value: 86 }, { name: 'Jun', value: 88 }]} /></Panel>
       </div>
     </div>
   );
 }
 
-function WarehouseRegister({ title, description, rows, searchKeys, action }: { title: string; description: string; rows: TableRow[]; searchKeys: string[]; action: string }) {
+function WarehouseRegister({ title, description, rows, searchKeys, action, user, accessContext }: { title: string; description: string; rows: TableRow[]; searchKeys: string[]; action: string; user: RuntimeUser; accessContext: PermissionContext }) {
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState('');
   const [drawer, setDrawer] = useState(false);
@@ -256,7 +256,7 @@ function WarehouseRegister({ title, description, rows, searchKeys, action }: { t
 
   return (
     <div className="space-y-5">
-      <WarehouseFilters compact />
+      <WarehouseFilters compact user={user} />
       <Panel title={title} description={description} action={<button className="form-button-primary" onClick={() => setDrawer(true)}>{action}</button>}>
         <div className="mb-4 grid gap-3 md:grid-cols-[minmax(240px,1fr)_220px_auto]">
           <label className="relative block">
@@ -269,17 +269,19 @@ function WarehouseRegister({ title, description, rows, searchKeys, action }: { t
           </select>
           <button className="form-button-subtle" onClick={() => { setSearch(''); setStatus(''); }}>Clear</button>
         </div>
-        <WarehouseDataTable rows={filteredRows} />
+        <WarehouseDataTable accessContext={accessContext} rows={filteredRows} />
       </Panel>
       {drawer ? <WarehouseFormDrawer title={action} onClose={() => setDrawer(false)} /> : null}
     </div>
   );
 }
 
-function UtilizationPanel() {
-  const totalCapacity = utilizationRecords.reduce((sum, item) => sum + item.capacity, 0);
-  const occupied = utilizationRecords.reduce((sum, item) => sum + item.occupied, 0);
-  const available = utilizationRecords.reduce((sum, item) => sum + item.available, 0);
+function UtilizationPanel({ accessContext }: { accessContext: PermissionContext }) {
+  const scope = getUserDataScope(accessContext.user, accessContext.platformUser ?? undefined);
+  const scopedUtilization = scope.warehouse ? utilizationRecords.filter((item) => item.warehouse === scope.warehouse) : utilizationRecords;
+  const totalCapacity = scopedUtilization.reduce((sum, item) => sum + item.capacity, 0);
+  const occupied = scopedUtilization.reduce((sum, item) => sum + item.occupied, 0);
+  const available = scopedUtilization.reduce((sum, item) => sum + item.available, 0);
   return (
     <div className="space-y-5">
       <div className="grid gap-4 md:grid-cols-4">
@@ -289,14 +291,14 @@ function UtilizationPanel() {
         <StatCard label="Overloaded Bins" value={warehouseBins.filter((item) => item.utilization > 95).length} helper="Critical capacity risk" accent="amber" />
       </div>
       <Panel title="Warehouse Utilization" description="Measure warehouse space efficiency, overcapacity risk, and optimization opportunities.">
-        <WarehouseBarChart data={utilizationRecords.map((item) => ({ name: item.zone, utilization: item.utilization, available: item.available }))} bars={['utilization', 'available']} />
-        <div className="mt-5"><WarehouseDataTable rows={utilizationRows()} /></div>
+        <WarehouseBarChart data={scopedUtilization.map((item) => ({ name: item.zone, utilization: item.utilization, available: item.available }))} bars={['utilization', 'available']} />
+        <div className="mt-5"><WarehouseDataTable accessContext={accessContext} rows={utilizationRows(scopedUtilization)} /></div>
       </Panel>
     </div>
   );
 }
 
-function LaborPanel() {
+function LaborPanel({ accessContext }: { accessContext: PermissionContext }) {
   return (
     <div className="space-y-5">
       <div className="grid gap-4 md:grid-cols-3">
@@ -306,16 +308,16 @@ function LaborPanel() {
       </div>
       <Panel title="Warehouse Labor Productivity" description="Workload, completion time, task progress, and accuracy by warehouse user.">
         <WarehouseBarChart data={laborRecords.map((item) => ({ name: item.user, assigned: item.assignedTasks, completed: item.completedTasks, pending: item.pendingTasks }))} bars={['assigned', 'completed', 'pending']} />
-        <div className="mt-5"><WarehouseDataTable rows={laborRows()} /></div>
+        <div className="mt-5"><WarehouseDataTable accessContext={accessContext} rows={laborRows()} /></div>
       </Panel>
     </div>
   );
 }
 
-function ReportsPanel() {
+function ReportsPanel({ user }: { user: RuntimeUser }) {
   return (
     <div className="space-y-5">
-      <WarehouseFilters />
+      <WarehouseFilters user={user} />
       <Panel title="Warehouse Reports" description="Preview and export warehouse reports as PDF, Excel, or CSV.">
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {warehouseReports.map((report) => (
@@ -331,8 +333,9 @@ function ReportsPanel() {
   );
 }
 
-function WarehouseDataTable({ rows }: { rows: TableRow[] }) {
-  const headers = rows[0] ? Object.keys(rows[0]) : [];
+function WarehouseDataTable({ rows, accessContext }: { rows: TableRow[]; accessContext?: PermissionContext }) {
+  const scopedRows = accessContext ? filterScopedTableRows(rows, accessContext) : rows;
+  const headers = scopedRows[0] ? Object.keys(scopedRows[0]) : [];
   return (
     <ScrollableTableFrame count={rows.length}>
       <table className="min-w-[1120px] w-full text-sm">
@@ -342,7 +345,7 @@ function WarehouseDataTable({ rows }: { rows: TableRow[] }) {
           </tr>
         </thead>
         <tbody>
-          {rows.map((row, index) => (
+          {scopedRows.map((row, index) => (
             <tr key={String(Object.values(row)[0] ?? index)} className="border-b border-white/10 hover:bg-white/[0.04]">
               {headers.map((header) => <td key={header} className="px-3 py-3 text-slate-300">{header === 'Status' && typeof row[header] === 'string' ? <StatusBadge status={String(row[header])} /> : row[header]}</td>)}
             </tr>
@@ -357,13 +360,16 @@ function WarehouseFilters({
   compact = false,
   filters = {},
   onChange,
+  user,
 }: {
   compact?: boolean;
   filters?: ModuleFilterValues;
   onChange?: (next: ModuleFilterValues) => void;
+  user?: RuntimeUser;
 }) {
   const { platformUser } = usePlatform();
-  const scope = getUserDataScope(userFromPlatform(platformUser), platformUser);
+  const scopeUser = user ?? userFromPlatform(platformUser);
+  const scope = getUserDataScope(scopeUser, platformUser);
   function setFilter(key: string, value: string) {
     onChange?.({ ...filters, [key]: value });
   }
@@ -379,7 +385,7 @@ function WarehouseFilters({
         <ModuleFilterSelect label="Category" options={warehouseCategoryOptions} value={filters.Category ?? ''} onChange={(value) => setFilter('Category', value)} />
         <Field label="Date Range"><input className="form-input mt-1 w-full" type="date" defaultValue="2026-06-24" /></Field>
         <ModuleFilterSelect label="Owner" options={warehouseOwnerOptions} value={filters.Owner ?? ''} onChange={(value) => setFilter('Owner', value)} />
-        {onChange ? <button type="button" className="form-button-subtle self-end" onClick={() => onChange(scopeFilterDefaults(userFromPlatform(platformUser), platformUser))}>Clear</button> : null}
+        {onChange ? <button type="button" className="form-button-subtle self-end" onClick={() => onChange(scopeFilterDefaults(scopeUser, platformUser))}>Clear</button> : null}
       </div>
     </Panel>
   );
@@ -466,6 +472,6 @@ function packingRows() { return packingRecords.map((item) => ({ 'Packing ID': it
 function dispatchRows(source = dispatchRecords) { return source.map((item) => ({ 'Dispatch ID': item.id, 'Destination Type': item.destinationType, Destination: item.destination, 'Source Reference': item.sourceReference, Warehouse: item.warehouse, 'Packed Items': item.packedItems, 'Dispatch Date': item.dispatchDate, Carrier: item.carrier, Vehicle: item.vehicle, Status: item.status, Actions: <RowActions labels={['Confirm', 'Track', 'Cancel']} recordId={item.id} recordTitle={item.destination} recordDetails={{ ID: item.id, Destination: item.destination, Warehouse: item.warehouse, Carrier: item.carrier, Status: item.status }} /> })); }
 function movementRows() { return internalMovements.map((item) => ({ 'Movement ID': item.id, 'Movement Type': item.type, Item: item.item, Quantity: item.quantity, 'From Location': item.from, 'To Location': item.to, 'Moved By': item.movedBy, 'Movement Date': item.movementDate, Status: item.status, Actions: <RowActions labels={['Confirm', 'Cancel', 'Export']} /> })); }
 function cycleRows() { return cycleCounts.map((item) => ({ 'Count ID': item.id, Warehouse: item.warehouse, Zone: item.zone, Bin: item.bin, Item: item.item, 'System Qty': item.systemQty, 'Counted Qty': item.countedQty, Variance: item.variance, 'Counted By': item.countedBy, 'Count Date': item.countDate, Status: item.status, Actions: <RowActions labels={['Submit', 'Approve Variance', 'Post']} /> })); }
-function utilizationRows() { return utilizationRecords.map((item) => ({ Warehouse: item.warehouse, Zone: item.zone, Capacity: item.capacity, Occupied: item.occupied, Available: item.available, 'Utilization %': `${item.utilization}%`, Status: item.status })); }
+function utilizationRows(source = utilizationRecords) { return source.map((item) => ({ Warehouse: item.warehouse, Zone: item.zone, Capacity: item.capacity, Occupied: item.occupied, Available: item.available, 'Utilization %': `${item.utilization}%`, Status: item.status })); }
 function laborRows() { return laborRecords.map((item) => ({ User: item.user, Role: item.role, 'Assigned Tasks': item.assignedTasks, 'Completed Tasks': item.completedTasks, 'Pending Tasks': item.pendingTasks, 'Average Completion Time': item.avgCompletionTime, 'Accuracy %': `${item.accuracy}%`, Status: item.status })); }
 function auditRows() { return auditEntries.map((item) => ({ Timestamp: item.timestamp, User: item.user, Action: item.action, 'Warehouse Area': item.area, 'Reference ID': item.referenceId, 'Previous Value': item.previousValue, 'New Value': item.newValue, Reason: item.reason })); }

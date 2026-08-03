@@ -12,7 +12,7 @@ import { ScrollableTableFrame } from '../components/ScrollableTableFrame';
 import { StatCard } from '../components/StatCard';
 import { StatusBadge } from '../components/StatusBadge';
 import { applyModuleFilters, type ModuleFilterValues } from '../lib/moduleFilters';
-import { getUserDataScope, scopeFilterDefaults, scopeOptions } from '../lib/rbac';
+import { canAccessModule, filterScopedTableRows, getUserDataScope, scopeFilterDefaults, scopeOptions, type PermissionContext } from '../lib/rbac';
 import { useDismissibleLayer } from '../lib/useDismissibleLayer';
 import { usePlatform } from '../platform/PlatformContext';
 import {
@@ -86,7 +86,8 @@ export function PlanningModulePage({ user }: { user: RuntimeUser }) {
   const { selectedClient, platformUser } = usePlatform();
   const location = useLocation();
   const section = sectionByPath[location.pathname] ?? 'dashboard';
-  const planningAllowed = platformUser.assignedModules.includes('Planning') && (!selectedClient || selectedClient.enabledModules.includes('Planning'));
+  const accessContext = { user, selectedClient, platformUser };
+  const planningAllowed = canAccessModule(accessContext, 'Planning');
 
   if (!planningAllowed) {
     return (
@@ -106,25 +107,25 @@ export function PlanningModulePage({ user }: { user: RuntimeUser }) {
         moduleName="Planning"
         description="Company-wide demand, inventory, production, capacity, material, workforce, and maintenance planning."
       />
-      <PlanningSectionContent section={section} user={user} />
+      <PlanningSectionContent section={section} user={user} accessContext={accessContext} />
     </div>
   );
 }
 
-function PlanningSectionContent({ section, user }: { section: PlanningSection; user: RuntimeUser }) {
-  if (section === 'dashboard') return <PlanningDashboard />;
-  if (section === 'demand') return <PlanRegister title="Demand Planning" description="Manage demand plans for ABC Manufacturing only." rows={demandRows()} searchKeys={['Demand Plan ID', 'Product', 'Customer', 'Owner']} action="Create Demand Plan" />;
-  if (section === 'inventory') return <PlanRegister title="Inventory Planning" description="Target inventory, safety stock, reorder points, shortage risk, and excess inventory risk." rows={inventoryRows()} searchKeys={['Inventory Plan ID', 'Product', 'Plant', 'Warehouse', 'Owner']} action="Create Inventory Plan" extra={<InventoryWidgets />} />;
-  if (section === 'production') return <PlanRegister title="Production Planning" description="Convert demand and inventory gaps into executable production plans." rows={productionRows()} searchKeys={['Production Plan ID', 'Product', 'Plant', 'Line', 'Owner']} action="Create Production Plan" extra={<ProductionWidgets />} />;
-  if (section === 'capacity') return <PlanRegister title="Capacity Planning" description="Check whether plants, lines, machines, shifts, and labor can support the production plan." rows={capacityRows()} searchKeys={['Capacity Plan ID', 'Plant', 'Line', 'Work Center', 'Owner']} action="Create Capacity Plan" extra={<CapacityWidgets />} />;
-  if (section === 'materials') return <PlanRegister title="Material Requirement Planning" description="Calculate material requirements from production plans and BOM demand." rows={materialRows()} searchKeys={['MRP ID', 'Material', 'Product', 'Supplier']} action="Create Material Plan" />;
-  if (section === 'procurement') return <PlanRegister title="Procurement Planning" description="Convert material shortages into procurement plans and purchase schedules." rows={procurementRows()} searchKeys={['Procurement Plan ID', 'Material', 'Supplier', 'Owner']} action="Create Procurement Plan" />;
-  if (section === 'workforce') return <PlanRegister title="Workforce Planning" description="Calculate workforce required to execute the production plan." rows={workforceRows()} searchKeys={['Workforce Plan ID', 'Plant', 'Line', 'Shift', 'Owner']} action="Create Workforce Plan" />;
-  if (section === 'maintenance') return <PlanRegister title="Maintenance Planning" description="Align maintenance windows with production plan and asset availability." rows={maintenanceRows()} searchKeys={['Maintenance Plan ID', 'Asset', 'Plant', 'Line', 'Owner']} action="Create Maintenance Plan" />;
+function PlanningSectionContent({ section, user, accessContext }: { section: PlanningSection; user: RuntimeUser; accessContext: PermissionContext }) {
+  if (section === 'dashboard') return <PlanningDashboard user={user} accessContext={accessContext} />;
+  if (section === 'demand') return <PlanRegister accessContext={accessContext} title="Demand Planning" description="Manage demand plans for ABC Manufacturing only." rows={demandRows()} searchKeys={['Demand Plan ID', 'Product', 'Customer', 'Owner']} action="Create Demand Plan" />;
+  if (section === 'inventory') return <PlanRegister accessContext={accessContext} title="Inventory Planning" description="Target inventory, safety stock, reorder points, shortage risk, and excess inventory risk." rows={inventoryRows()} searchKeys={['Inventory Plan ID', 'Product', 'Plant', 'Warehouse', 'Owner']} action="Create Inventory Plan" extra={<InventoryWidgets />} />;
+  if (section === 'production') return <PlanRegister accessContext={accessContext} title="Production Planning" description="Convert demand and inventory gaps into executable production plans." rows={productionRows()} searchKeys={['Production Plan ID', 'Product', 'Plant', 'Line', 'Owner']} action="Create Production Plan" extra={<ProductionWidgets />} />;
+  if (section === 'capacity') return <PlanRegister accessContext={accessContext} title="Capacity Planning" description="Check whether plants, lines, machines, shifts, and labor can support the production plan." rows={capacityRows()} searchKeys={['Capacity Plan ID', 'Plant', 'Line', 'Work Center', 'Owner']} action="Create Capacity Plan" extra={<CapacityWidgets />} />;
+  if (section === 'materials') return <PlanRegister accessContext={accessContext} title="Material Requirement Planning" description="Calculate material requirements from production plans and BOM demand." rows={materialRows()} searchKeys={['MRP ID', 'Material', 'Product', 'Supplier']} action="Create Material Plan" />;
+  if (section === 'procurement') return <PlanRegister accessContext={accessContext} title="Procurement Planning" description="Convert material shortages into procurement plans and purchase schedules." rows={procurementRows()} searchKeys={['Procurement Plan ID', 'Material', 'Supplier', 'Owner']} action="Create Procurement Plan" />;
+  if (section === 'workforce') return <PlanRegister accessContext={accessContext} title="Workforce Planning" description="Calculate workforce required to execute the production plan." rows={workforceRows()} searchKeys={['Workforce Plan ID', 'Plant', 'Line', 'Shift', 'Owner']} action="Create Workforce Plan" />;
+  if (section === 'maintenance') return <PlanRegister accessContext={accessContext} title="Maintenance Planning" description="Align maintenance windows with production plan and asset availability." rows={maintenanceRows()} searchKeys={['Maintenance Plan ID', 'Asset', 'Plant', 'Line', 'Owner']} action="Create Maintenance Plan" />;
   if (section === 'scenarios') return <ScenarioPlanning />;
-  if (section === 'approvals') return <ApprovalsPanel user={user} />;
-  if (section === 'reports') return <ReportsPanel />;
-  return <AuditPanel />;
+  if (section === 'approvals') return <ApprovalsPanel user={user} accessContext={accessContext} />;
+  if (section === 'reports') return <ReportsPanel user={user} />;
+  return <AuditPanel accessContext={accessContext} />;
 }
 
 const planningFilterFieldMap = {
@@ -149,10 +150,10 @@ const materialFilterFieldMap = {
   Status: 'status' as const,
 };
 
-function PlanningDashboard() {
+function PlanningDashboard({ user, accessContext }: { user: RuntimeUser; accessContext: PermissionContext }) {
   const navigate = useNavigate();
   const { platformUser } = usePlatform();
-  const [filters, setFilters] = useState<ModuleFilterValues>(() => scopeFilterDefaults(userFromPlatform(platformUser), platformUser));
+  const [filters, setFilters] = useState<ModuleFilterValues>(() => scopeFilterDefaults(user, platformUser));
   const filteredDemand = useMemo(
     () => applyModuleFilters(demandPlans, filters, { Product: 'product', Category: planningFilterFieldMap.Category, Planner: 'owner', Status: 'status' }),
     [filters],
@@ -195,7 +196,7 @@ function PlanningDashboard() {
         <StatCard label="Open Planning Risks" value={openRisks} helper="Capacity, material, labor, maintenance" accent="amber" />
         <StatCard label="Planning Accuracy" value="91%" helper="Forecast versus actual orders" accent="emerald" />
       </div>
-      <PlanningFilterSidebar filters={filters} onChange={setFilters} />
+      <PlanningFilterSidebar filters={filters} onChange={setFilters} user={user} />
       <div className="grid gap-5 xl:grid-cols-2">
         <Panel title="Demand vs Production Plan" description="Demand quantity, planned production quantity, and gap." action={<button type="button" className="form-button-subtle" onClick={() => navigate('/planning/production')}>Open Production</button>}>
           <PlanningTrendChart data={filteredProduction.map((item) => ({ name: item.product, demand: item.forecastDemand, production: item.plannedProduction, gap: item.plannedProduction - item.forecastDemand }))} bars={['demand', 'production', 'gap']} />
@@ -204,14 +205,14 @@ function PlanningDashboard() {
           <PlanningTrendChart data={filteredCapacity.map((item) => ({ name: item.workCenter, available: item.availableCapacity, required: item.requiredCapacity, utilization: item.utilization }))} bars={['available', 'required']} />
         </Panel>
         <Panel title="Material Shortage Summary" description="Materials short against production requirements." action={<button type="button" className="form-button-subtle" onClick={() => navigate('/planning/materials')}>Open Materials</button>}>
-          <PlanningDataTable rows={materialRows(filteredMaterials).filter((row) => Number(row['Shortage Qty']) > 0)} />
+          <PlanningDataTable accessContext={accessContext} rows={materialRows(filteredMaterials).filter((row) => Number(row['Shortage Qty']) > 0)} />
         </Panel>
         <Panel title="Inventory Coverage" description="Current stock versus forecast demand and coverage days." action={<button type="button" className="form-button-subtle" onClick={() => navigate('/planning/inventory')}>Open Inventory</button>}>
-          <PlanningDataTable rows={inventoryRows(filteredInventory)} />
+          <PlanningDataTable accessContext={accessContext} rows={inventoryRows(filteredInventory)} />
         </Panel>
       </div>
       <Panel title="Planning Actions" description="Draft actions that require human approval before execution.">
-        <PlanningDataTable rows={[
+        <PlanningDataTable accessContext={accessContext} rows={[
           { Action: 'Generate purchase requisition', Module: 'Procurement', Owner: 'Rohan Patel', Priority: 'High', 'Due Date': '2026-06-24', Status: <StatusBadge status="Pending Approval" /> },
           { Action: 'Resolve Line 2 capacity gap', Module: 'Capacity', Owner: 'Pavan Reddy', Priority: 'Critical', 'Due Date': '2026-06-25', Status: <StatusBadge status="Critical" /> },
           { Action: 'Move maintenance window', Module: 'Maintenance', Owner: 'Meera Iyer', Priority: 'High', 'Due Date': '2026-06-26', Status: <StatusBadge status="Review" /> },
@@ -222,7 +223,7 @@ function PlanningDashboard() {
   );
 }
 
-function PlanRegister({ title, description, rows, searchKeys, action, extra }: { title: string; description: string; rows: TableRow[]; searchKeys: string[]; action: string; extra?: ReactNode }) {
+function PlanRegister({ title, description, rows, searchKeys, action, extra, accessContext }: { title: string; description: string; rows: TableRow[]; searchKeys: string[]; action: string; extra?: ReactNode; accessContext: PermissionContext }) {
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState('');
   const [drawer, setDrawer] = useState(false);
@@ -245,7 +246,7 @@ function PlanRegister({ title, description, rows, searchKeys, action, extra }: {
           </select>
           <button className="form-button-subtle" onClick={() => { setSearch(''); setStatus(''); }}>Clear</button>
         </div>
-        <PlanningDataTable rows={filteredRows} />
+        <PlanningDataTable accessContext={accessContext} rows={filteredRows} />
       </Panel>
       {extra}
       {drawer ? <PlanningFormDrawer title={action} onClose={() => setDrawer(false)} /> : null}
@@ -267,7 +268,7 @@ function ScenarioPlanning() {
   );
 }
 
-function ApprovalsPanel({ user }: { user: RuntimeUser }) {
+function ApprovalsPanel({ user, accessContext }: { user: RuntimeUser; accessContext: PermissionContext }) {
   const [notice, setNotice] = useState('');
   const rows = approvals.map((item) => ({
     'Approval ID': item.id,
@@ -284,13 +285,13 @@ function ApprovalsPanel({ user }: { user: RuntimeUser }) {
       </div>
     ),
   }));
-  return <Panel title="Planning Approvals" description="Approve, reject, or request changes for company planning records.">{notice ? <div className="mb-4 rounded-xl border border-cyan-300/20 bg-cyan-400/10 p-3 text-sm text-cyan-100">{notice}</div> : null}<PlanningDataTable rows={rows} /></Panel>;
+  return <Panel title="Planning Approvals" description="Approve, reject, or request changes for company planning records.">{notice ? <div className="mb-4 rounded-xl border border-cyan-300/20 bg-cyan-400/10 p-3 text-sm text-cyan-100">{notice}</div> : null}<PlanningDataTable accessContext={accessContext} rows={rows} /></Panel>;
 }
 
-function ReportsPanel() {
+function ReportsPanel({ user }: { user: RuntimeUser }) {
   return (
     <div className="space-y-5">
-      <PlanningFilterSidebar />
+      <PlanningFilterSidebar user={user} />
       <Panel title="Planning Reports" description="Preview and export planning reports by date, plant, warehouse, product, owner, and status.">
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {reports.map((report) => (
@@ -306,13 +307,14 @@ function ReportsPanel() {
   );
 }
 
-function AuditPanel() {
-  return <Panel title="Planning Audit" description="Business-friendly audit history without raw backend IDs."><PlanningDataTable rows={auditEntries.map((item) => ({ Timestamp: item.timestamp, User: item.user, Action: item.action, 'Plan Type': item.planType, 'Plan ID': item.planId, 'Previous Value': item.previousValue, 'New Value': item.newValue, Reason: item.reason }))} /></Panel>;
+function AuditPanel({ accessContext }: { accessContext: PermissionContext }) {
+  return <Panel title="Planning Audit" description="Business-friendly audit history without raw backend IDs."><PlanningDataTable accessContext={accessContext} rows={auditEntries.map((item) => ({ Timestamp: item.timestamp, User: item.user, Action: item.action, 'Plan Type': item.planType, 'Plan ID': item.planId, 'Previous Value': item.previousValue, 'New Value': item.newValue, Reason: item.reason }))} /></Panel>;
 }
 
-function PlanningFilterSidebar({ filters = {}, onChange }: { filters?: ModuleFilterValues; onChange?: (next: ModuleFilterValues) => void }) {
+function PlanningFilterSidebar({ filters = {}, onChange, user }: { filters?: ModuleFilterValues; onChange?: (next: ModuleFilterValues) => void; user?: RuntimeUser }) {
   const { platformUser } = usePlatform();
-  const scope = getUserDataScope(userFromPlatform(platformUser), platformUser);
+  const scopeUser = user ?? userFromPlatform(platformUser);
+  const scope = getUserDataScope(scopeUser, platformUser);
   function setFilter(key: string, value: string) {
     onChange?.({ ...filters, [key]: value });
   }
@@ -326,7 +328,7 @@ function PlanningFilterSidebar({ filters = {}, onChange }: { filters?: ModuleFil
         <ModuleFilterSelect label="Category" options={planningFilters.categories} value={filters.Category ?? ''} onChange={(value) => setFilter('Category', value)} />
         <ModuleFilterSelect label="Planner" options={planningFilters.planners} value={filters.Planner ?? ''} onChange={(value) => setFilter('Planner', value)} />
         <ModuleFilterSelect label="Status" options={planningFilters.statuses} value={filters.Status ?? ''} onChange={(value) => setFilter('Status', value)} />
-        {onChange ? <button type="button" className="form-button-subtle self-end" onClick={() => onChange(scopeFilterDefaults(userFromPlatform(platformUser), platformUser))}>Clear</button> : null}
+        {onChange ? <button type="button" className="form-button-subtle self-end" onClick={() => onChange(scopeFilterDefaults(scopeUser, platformUser))}>Clear</button> : null}
       </div>
     </Panel>
   );
@@ -349,8 +351,9 @@ function userFromPlatform(platformUser?: { plant?: string; warehouse?: string; d
   };
 }
 
-function PlanningDataTable({ rows }: { rows: TableRow[] }) {
-  const headers = rows[0] ? Object.keys(rows[0]) : [];
+function PlanningDataTable({ rows, accessContext }: { rows: TableRow[]; accessContext?: PermissionContext }) {
+  const scopedRows = accessContext ? filterScopedTableRows(rows, accessContext) : rows;
+  const headers = scopedRows[0] ? Object.keys(scopedRows[0]) : [];
   return (
     <ScrollableTableFrame count={rows.length}>
       <table className="min-w-[1100px] w-full text-sm">
@@ -360,7 +363,7 @@ function PlanningDataTable({ rows }: { rows: TableRow[] }) {
           </tr>
         </thead>
         <tbody>
-          {rows.map((row, index) => (
+          {scopedRows.map((row, index) => (
             <tr key={String(Object.values(row)[0] ?? index)} className="border-b border-white/10 hover:bg-white/[0.04]">
               {headers.map((header) => <td key={header} className="px-3 py-3 text-slate-300">{header === 'Status' && typeof row[header] === 'string' ? <StatusBadge status={String(row[header])} /> : row[header]}</td>)}
             </tr>

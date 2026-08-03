@@ -1,4 +1,4 @@
-import { FormEvent, useMemo, useState } from 'react';
+import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { useMutation, useQueries, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { Boxes, Factory, ShieldCheck, Trash2, Wrench } from 'lucide-react';
@@ -12,7 +12,7 @@ import { Panel } from '../components/Panel';
 import { StatCard } from '../components/StatCard';
 import { StatusBadge } from '../components/StatusBadge';
 import { formatCurrency, formatNumber } from '../lib/format';
-import { canWriteOperationalData } from '../lib/rbac';
+import { canAccessModule, canViewFinancialData, canWriteOperationalData } from '../lib/rbac';
 import { backend } from '../services/api';
 import type { ModuleRecord, RuntimeUser } from '../types';
 import { usePlatform } from '../platform/PlatformContext';
@@ -54,7 +54,11 @@ function generatedRecordCode(moduleKey: string, name: string) {
 }
 
 export function OperationsPage({ user }: { user: RuntimeUser }) {
-  const { currency } = usePlatform();
+  const { currency, selectedClient, platformUser } = usePlatform();
+  const permissionContext = useMemo(() => ({ user, selectedClient, platformUser }), [platformUser, selectedClient, user]);
+  const canViewFinancial = canViewFinancialData(permissionContext);
+  const canViewInventory = canAccessModule(permissionContext, 'Inventory');
+  const canSeeModuleAllocations = ['super_admin', 'account_owner', 'organization_admin', 'admin'].includes(user.role);
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const [newRecord, setNewRecord] = useState({
@@ -69,12 +73,12 @@ export function OperationsPage({ user }: { user: RuntimeUser }) {
   const [selectedModule, setSelectedModule] = useState('inventory');
   const [inventory, modules, records, analytics, companies, featureFlags] = useQueries({
     queries: [
-      { queryKey: ['inventory-dashboard'], queryFn: backend.inventoryDashboard },
+      { queryKey: ['inventory-dashboard'], queryFn: backend.inventoryDashboard, enabled: canViewInventory && canViewFinancial },
       { queryKey: ['modules'], queryFn: backend.modules },
       { queryKey: ['runtime-records'], queryFn: () => backend.records() },
       { queryKey: ['runtime-analytics'], queryFn: backend.analytics },
-      { queryKey: ['companies'], queryFn: backend.companies },
-      { queryKey: ['feature-flags'], queryFn: backend.featureFlags },
+      { queryKey: ['companies'], queryFn: backend.companies, enabled: canSeeModuleAllocations },
+      { queryKey: ['feature-flags'], queryFn: backend.featureFlags, enabled: canSeeModuleAllocations },
     ],
   });
   const createRecord = useMutation({
@@ -104,8 +108,23 @@ export function OperationsPage({ user }: { user: RuntimeUser }) {
     [analytics.data?.module_record_counts],
   );
   const moduleOptions = useMemo(
-    () => (modules.data ?? []).map((module) => ({ key: module.key.toLowerCase(), label: module.label ?? module.key })),
+    () => (modules.data ?? [])
+      .map((module) => ({ key: module.key.toLowerCase(), label: module.label ?? module.key }))
+      .filter((module) => canAccessModule(permissionContext, module.label)),
+    [modules.data, permissionContext],
+  );
+  useEffect(() => {
+    if (moduleOptions.length && !moduleOptions.some((module) => module.key === selectedModule)) {
+      setSelectedModule(moduleOptions[0].key);
+    }
+  }, [moduleOptions, selectedModule]);
+  const moduleLabelByKey = useMemo(
+    () => new Map((modules.data ?? []).map((module) => [module.key.toLowerCase(), module.label ?? module.key])),
     [modules.data],
+  );
+  const visibleRecords = useMemo(
+    () => (records.data ?? []).filter((record) => canAccessModule(permissionContext, moduleLabelByKey.get(String(record.module_key).toLowerCase()) ?? String(record.module_key))),
+    [moduleLabelByKey, permissionContext, records.data],
   );
   const selectedModuleLabel = moduleOptions.find((module) => module.key === selectedModule)?.label ?? selectedModule.toUpperCase();
   const companyNameById = useMemo(
@@ -158,21 +177,18 @@ export function OperationsPage({ user }: { user: RuntimeUser }) {
       ) : null}
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <StatCard label="Inventory Value" value={formatCurrency(inventory.data?.total_inventory_value, currency)} helper="Open inventory module" icon={<Boxes className="h-5 w-5" />} onClick={() => navigate('/inventory')} />
-        <StatCard label="Backend Modules" value={formatNumber(modules.data?.length)} helper="Jump to module allocations" icon={<Factory className="h-5 w-5" />} onClick={() => document.getElementById('module-allocations')?.scrollIntoView({ behavior: 'smooth' })} />
-        <StatCard label="Low Stock Risks" value={formatNumber(analytics.data?.inventory_low_stock_count ?? inventory.data?.low_stock_risks?.length)} helper="Open inventory risks" icon={<ShieldCheck className="h-5 w-5" />} onClick={() => navigate('/inventory')} />
-        <StatCard label="Maintenance Ready" value="Active" helper="Open maintenance module" icon={<Wrench className="h-5 w-5" />} onClick={() => navigate('/maintenance')} />
+        {canViewInventory && canViewFinancial ? <StatCard label="Inventory Value" value={formatCurrency(inventory.data?.total_inventory_value, currency)} helper="Open inventory module" icon={<Boxes className="h-5 w-5" />} onClick={() => navigate('/inventory')} /> : null}
+        {canViewInventory && !canViewFinancial ? <StatCard label="Inventory Quantity" value={formatNumber(analytics.data?.inventory_total_quantity)} helper="Open inventory module" icon={<Boxes className="h-5 w-5" />} onClick={() => navigate('/inventory')} /> : null}
+        {canSeeModuleAllocations ? <StatCard label="Backend Modules" value={formatNumber(modules.data?.length)} helper="Jump to module allocations" icon={<Factory className="h-5 w-5" />} onClick={() => document.getElementById('module-allocations')?.scrollIntoView({ behavior: 'smooth' })} /> : null}
+        {canViewInventory ? <StatCard label="Low Stock Risks" value={formatNumber(analytics.data?.inventory_low_stock_count ?? inventory.data?.low_stock_risks?.length)} helper="Open inventory risks" icon={<ShieldCheck className="h-5 w-5" />} onClick={() => navigate('/inventory')} /> : null}
+        {canAccessModule(permissionContext, 'Maintenance') ? <StatCard label="Maintenance Ready" value="Active" helper="Open maintenance module" icon={<Wrench className="h-5 w-5" />} onClick={() => navigate('/maintenance')} /> : null}
       </div>
 
       <div className="mt-6 grid gap-4 xl:grid-cols-[1fr_0.9fr]">
         <Panel title="Create Operational Record" description="Writes to the shared backend database and immediately updates analytics.">
           <form className="grid gap-3 md:grid-cols-2" onSubmit={submitRecord}>
-            <select className="rounded-md border border-border px-3 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-60" value={newRecord.module_key} onChange={(event) => setNewRecord({ ...newRecord, module_key: event.target.value })} disabled={!canWrite}>
-              <option value="inventory">Inventory</option>
-              <option value="production">Production</option>
-              <option value="maintenance">Maintenance</option>
-              <option value="quality">Quality</option>
-              <option value="procurement">Procurement</option>
+            <select className="rounded-md border border-border px-3 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-60" value={newRecord.module_key} onChange={(event) => setNewRecord({ ...newRecord, module_key: event.target.value })} disabled={!canWrite || moduleOptions.length === 0}>
+              {moduleOptions.map((module) => <option key={module.key} value={module.key}>{module.label}</option>)}
             </select>
             <input className="rounded-md border border-border px-3 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-60" placeholder="Record type" value={newRecord.record_type} onChange={(event) => setNewRecord({ ...newRecord, record_type: event.target.value })} required disabled={!canWrite} />
             <input className="rounded-md border border-border px-3 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-60" placeholder="System ID" value={generatedRecordCode(newRecord.module_key, newRecord.name)} readOnly disabled />
@@ -199,7 +215,7 @@ export function OperationsPage({ user }: { user: RuntimeUser }) {
       <div className="mt-6">
         <Panel title="Database Records" description="Full read/write operational records across modules.">
           <DataTable
-            rows={records.data ?? []}
+            rows={visibleRecords}
             emptyTitle="No database records"
             columns={[
               { key: 'module_key', label: 'Module' },
@@ -238,7 +254,7 @@ export function OperationsPage({ user }: { user: RuntimeUser }) {
         </Panel>
       </div>
 
-      <div className="mt-6">
+      {canSeeModuleAllocations ? <div className="mt-6">
         <Panel title="Registered Backend Modules" description="Select a module to see which companies have it allocated from live /feature-flags data.">
           <div id="module-allocations" />
           <div className="mb-4 grid gap-3 md:grid-cols-[minmax(240px,360px)_1fr]">
@@ -281,7 +297,7 @@ export function OperationsPage({ user }: { user: RuntimeUser }) {
             ]}
           />
         </Panel>
-      </div>
+      </div> : null}
     </>
   );
 }

@@ -7,7 +7,7 @@ import { PageHeader } from '../components/PageHeader';
 import { Panel } from '../components/Panel';
 import { StatusBadge } from '../components/StatusBadge';
 import { useEnterpriseAccess } from '../enterprise/EnterpriseAccessContext';
-import { canAccessModule, canAccessSection } from '../lib/rbac';
+import { canAccessAppSection, canAccessModule, canViewFinancialData } from '../lib/rbac';
 import { usePlatform } from '../platform/PlatformContext';
 import type { RuntimeUser } from '../types';
 
@@ -27,6 +27,7 @@ type DashboardDefinition = {
   label: string;
   moduleName?: string;
   section?: 'data-hub';
+  financialOnly?: boolean;
   enterpriseExperiences?: Array<'global' | 'regional' | 'plant' | 'frontline'>;
   render: (user: RuntimeUser) => ReactNode;
 };
@@ -43,7 +44,7 @@ const dashboards: DashboardDefinition[] = [
   { key: 'sales', label: 'Sales', moduleName: 'Sales & Distribution', render: (user) => <ModuleDashboard moduleKey="sales" user={user} /> },
   { key: 'costing', label: 'Costing', moduleName: 'Costing & Profitability', render: (user) => <ModuleDashboard moduleKey="costing" user={user} /> },
   { key: 'compliance', label: 'Compliance', moduleName: 'Compliance', render: (user) => <ModuleDashboard moduleKey="compliance" user={user} /> },
-  { key: 'business-impact', label: 'Business Impact', moduleName: 'Reports & Analytics', render: () => <BusinessImpactDashboard /> },
+  { key: 'business-impact', label: 'Business Impact', moduleName: 'Reports & Analytics', financialOnly: true, render: () => <BusinessImpactDashboard /> },
   { key: 'integration', label: 'Integration', section: 'data-hub', render: () => <IntegrationDashboard /> },
   { key: 'global-executive', label: 'Global Executive', enterpriseExperiences: ['global'], render: () => <EnterpriseScopeDashboard dashboardKey="global-executive" title="Global Executive Dashboard" /> },
   { key: 'global-operations', label: 'Global Operations', enterpriseExperiences: ['global'], render: () => <EnterpriseScopeDashboard dashboardKey="global-operations" title="Global Operations Dashboard" /> },
@@ -83,7 +84,8 @@ export function UnifiedDashboardsPage({ user }: { user: RuntimeUser }) {
       return enterpriseAccess.can('dashboard.view');
     }
     if (dashboard.enterpriseExperiences) return false;
-    if (dashboard.section && !canAccessSection(user, dashboard.section)) return false;
+    if (dashboard.financialOnly && !canViewFinancialData(permissionContext)) return false;
+    if (dashboard.section && !canAccessAppSection(permissionContext, dashboard.section)) return false;
     return !dashboard.moduleName || canAccessModule(permissionContext, dashboard.moduleName);
   });
   const selected = allowedDashboards.find((dashboard) => dashboard.key === dashboardKey) ?? allowedDashboards[0];

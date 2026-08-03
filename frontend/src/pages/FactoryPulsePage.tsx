@@ -3,6 +3,8 @@ import { useQuery } from '@tanstack/react-query';
 import { Activity, AlertTriangle, BadgeIndianRupee, CheckCircle2, Factory, Gauge, TimerReset } from 'lucide-react';
 
 import { backend } from '../services/api';
+import { canViewFinancialData } from '../lib/rbac';
+import { usePlatform } from '../platform/PlatformContext';
 import type { RuntimeUser } from '../types';
 
 type Row = Record<string, unknown>;
@@ -21,6 +23,8 @@ function numberValue(value: unknown) {
 }
 
 export function FactoryPulsePage({ user }: { user: RuntimeUser }) {
+  const { selectedClient, platformUser } = usePlatform();
+  const canViewFinancial = canViewFinancialData({ user, selectedClient, platformUser });
   const dashboard = useQuery({ queryKey: ['factorypulse', 'dashboard'], queryFn: backend.factoryPulseDashboard });
   const orders = useQuery({ queryKey: ['factorypulse', 'orders'], queryFn: backend.factoryPulseOrders });
   const downtime = useQuery({ queryKey: ['factorypulse', 'downtime'], queryFn: backend.factoryPulseDowntime });
@@ -50,7 +54,7 @@ export function FactoryPulsePage({ user }: { user: RuntimeUser }) {
             <p className="text-xs font-semibold uppercase tracking-[0.24em] text-cyan-200">FactoryPulse MVP</p>
             <h1 className="mt-2 text-3xl font-semibold tracking-tight text-white">Find losses. Engage teams. Prove improvement.</h1>
             <p className="mt-2 max-w-4xl text-sm leading-6 text-slate-300">
-              Lightweight 90-day manufacturing improvement cockpit for production output, downtime, scrap, issues, corrective actions, OEE and verified financial benefit.
+              Lightweight 90-day manufacturing improvement cockpit for production output, downtime, scrap, issues, corrective actions, and OEE.
             </p>
           </div>
           <div className="rounded-2xl border border-cyan-300/20 bg-cyan-400/10 px-4 py-3 text-sm text-cyan-100">
@@ -62,19 +66,19 @@ export function FactoryPulsePage({ user }: { user: RuntimeUser }) {
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <Metric icon={Gauge} label="OEE" value={`${text(dashboard.data?.oee_percent, '0')}%`} detail={text(dashboard.data?.oee_definition)} />
         <Metric icon={Factory} label="Production Attainment" value={`${text(dashboard.data?.production_attainment_percent, '0')}%`} detail="Planned output versus actual good output" />
-        <Metric icon={TimerReset} label="Downtime" value={`${numberValue(dashboard.data?.downtime_minutes)} min`} detail={`Loss ${money(dashboard.data?.downtime_loss)}`} />
-        <Metric icon={BadgeIndianRupee} label="Estimated Savings" value={money(dashboard.data?.estimated_savings)} detail={`${numberValue(dashboard.data?.open_actions)} open actions`} />
+        <Metric icon={TimerReset} label="Downtime" value={`${numberValue(dashboard.data?.downtime_minutes)} min`} detail={canViewFinancial ? `Loss ${money(dashboard.data?.downtime_loss)}` : 'Logged production downtime'} />
+        {canViewFinancial ? <Metric icon={BadgeIndianRupee} label="Estimated Savings" value={money(dashboard.data?.estimated_savings)} detail={`${numberValue(dashboard.data?.open_actions)} open actions`} /> : <Metric icon={Activity} label="Open Actions" value={numberValue(dashboard.data?.open_actions)} detail="Improvement actions in progress" />}
       </section>
 
       <section className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
         <div className="panel-card p-6">
-          <SectionTitle title="Loss Control Board" subtitle="Top financial losses, current owner and required follow-up." />
+          <SectionTitle title={canViewFinancial ? 'Loss Control Board' : 'Operational Loss Board'} subtitle={canViewFinancial ? 'Top financial losses, current owner and required follow-up.' : 'Top operational losses, current owner and required follow-up.'} />
           <div className="mt-4 overflow-hidden rounded-2xl border border-white/10">
             <table className="w-full text-left text-sm">
               <thead className="bg-white/[0.04] text-xs uppercase tracking-[0.18em] text-slate-400">
                 <tr>
                   <th className="px-4 py-3">Loss</th>
-                  <th className="px-4 py-3">Impact</th>
+                  <th className="px-4 py-3">{canViewFinancial ? 'Impact' : 'Status'}</th>
                   <th className="px-4 py-3">Owner</th>
                 </tr>
               </thead>
@@ -82,7 +86,7 @@ export function FactoryPulsePage({ user }: { user: RuntimeUser }) {
                 {topLosses.map((row) => (
                   <tr key={text(row.loss)} className="text-slate-200">
                     <td className="px-4 py-4 font-semibold text-white">{text(row.loss)}</td>
-                    <td className="px-4 py-4 text-amber-100">{money(row.amount)}</td>
+                    <td className="px-4 py-4 text-amber-100">{canViewFinancial ? money(row.amount) : text(row.status, 'Needs review')}</td>
                     <td className="px-4 py-4">{text(row.owner)}</td>
                   </tr>
                 ))}
@@ -118,7 +122,7 @@ export function FactoryPulsePage({ user }: { user: RuntimeUser }) {
       <section className="grid gap-6 xl:grid-cols-3">
         <DataPanel title="Production Orders" rows={orders.data ?? []} columns={['order_number', 'product', 'status', 'target_attainment_percent']} />
         <DataPanel title="Downtime Events" rows={downtime.data ?? []} columns={['machine_id', 'downtime_reason', 'duration_minutes', 'status']} tone="warning" />
-        <DataPanel title="Scrap & Quality Events" rows={scrap.data ?? []} columns={['product', 'defect_reason', 'quantity_affected', 'cost_of_poor_quality']} tone="danger" />
+        <DataPanel title="Scrap & Quality Events" rows={scrap.data ?? []} columns={canViewFinancial ? ['product', 'defect_reason', 'quantity_affected', 'cost_of_poor_quality'] : ['product', 'defect_reason', 'quantity_affected', 'status']} tone="danger" />
       </section>
 
       <section className="grid gap-6 xl:grid-cols-[1fr_0.8fr]">
@@ -131,7 +135,7 @@ export function FactoryPulsePage({ user }: { user: RuntimeUser }) {
                   <p className="font-semibold text-white">{text(action.action_title)}</p>
                   <span className="rounded-full border border-cyan-300/20 bg-cyan-400/10 px-3 py-1 text-xs font-semibold text-cyan-100">{text(action.status)}</span>
                 </div>
-                <p className="mt-2 text-sm text-slate-400">Owner: {text(action.owner)} · Benefit: {money(action.estimated_benefit)}</p>
+                <p className="mt-2 text-sm text-slate-400">Owner: {text(action.owner)}{canViewFinancial ? ` · Benefit: ${money(action.estimated_benefit)}` : ''}</p>
               </div>
             ))}
           </div>

@@ -12,7 +12,7 @@ import { StatCard } from '../components/StatCard';
 import { StatusBadge } from '../components/StatusBadge';
 import { formatCurrency, formatNumber, toTitle } from '../lib/format';
 import { queryKeys } from '../lib/queryKeys';
-import { canAccessModule, canAccessPage, canAccessSection } from '../lib/rbac';
+import { canAccessAppSection, canAccessModule, canAccessPage, canViewFinancialData } from '../lib/rbac';
 import { backend } from '../services/api';
 import type { ModuleRecord, RuntimeUser } from '../types';
 import { usePlatform } from '../platform/PlatformContext';
@@ -53,13 +53,31 @@ function moduleRoute(moduleKey: string) {
   return routeMap[moduleKey] ?? '/operations';
 }
 
+const moduleLabelByKey: Record<string, string> = {
+  planning: 'Planning',
+  inventory: 'Inventory',
+  warehouse: 'Warehouse',
+  production: 'Production',
+  maintenance: 'Maintenance',
+  quality: 'Quality',
+  procurement: 'Procurement',
+  sales: 'Sales & Distribution',
+  costing: 'Costing & Profitability',
+  compliance: 'Compliance',
+  'customer-portal': 'Customer Portal',
+  'supplier-portal': 'Supplier Portal',
+  reports: 'Reports & Analytics',
+  documents: 'Document Management',
+};
+
 export function DashboardPage({ user }: { user: RuntimeUser }) {
   const navigate = useNavigate();
   const { currency, selectedClientId, selectedClient, platformUser, isPlatformContext } = usePlatform();
   const permissionContext = { user, selectedClient, platformUser, isPlatformContext };
-  const canViewAdmin = canAccessSection(user, 'admin');
-  const canViewDataHub = canAccessSection(user, 'data-hub');
-  const canViewOperations = canAccessSection(user, 'operations');
+  const canViewAdmin = canAccessAppSection(permissionContext, 'admin');
+  const canViewDataHub = canAccessAppSection(permissionContext, 'data-hub');
+  const canViewOperations = canAccessAppSection(permissionContext, 'operations');
+  const canViewFinancial = canViewFinancialData(permissionContext);
   const canReadAdminData = canViewAdmin && ['super_admin', 'account_owner', 'admin'].includes(user.role);
   const canReadDataHubData = canViewDataHub && ['super_admin', 'account_owner', 'admin'].includes(user.role);
   const canViewInventory = canAccessModule(permissionContext, 'Inventory');
@@ -69,7 +87,7 @@ export function DashboardPage({ user }: { user: RuntimeUser }) {
   const canViewProcurement = canAccessModule(permissionContext, 'Procurement');
 
   const admin = useQuery({ queryKey: queryKeys.dashboard.admin(selectedClientId), queryFn: backend.adminDashboard, enabled: canReadAdminData });
-  const inventory = useQuery({ queryKey: queryKeys.dashboard.inventory(selectedClientId), queryFn: backend.inventoryDashboard, enabled: canViewInventory });
+  const inventory = useQuery({ queryKey: queryKeys.dashboard.inventory(selectedClientId), queryFn: backend.inventoryDashboard, enabled: canViewInventory && canViewFinancial });
   const analytics = useQuery({ queryKey: queryKeys.dashboard.analytics(selectedClientId), queryFn: backend.analytics, enabled: canViewOperations });
   const systems = useQuery({ queryKey: queryKeys.dashboard.systems(selectedClientId), queryFn: backend.connectedSystems, enabled: canReadDataHubData });
   const uploads = useQuery({ queryKey: queryKeys.dashboard.uploads(selectedClientId), queryFn: backend.uploads, enabled: canReadDataHubData });
@@ -77,7 +95,7 @@ export function DashboardPage({ user }: { user: RuntimeUser }) {
 
   const activeQueries = [
     canReadAdminData ? admin : null,
-    canViewInventory ? inventory : null,
+    canViewInventory && canViewFinancial ? inventory : null,
     canViewOperations ? analytics : null,
     canReadDataHubData ? systems : null,
     canReadDataHubData ? uploads : null,
@@ -95,7 +113,7 @@ export function DashboardPage({ user }: { user: RuntimeUser }) {
     return <ErrorState title="Dashboard data unavailable" error={firstError} />;
   }
 
-  const allRecords = records.data ?? [];
+  const allRecords = (records.data ?? []).filter((record) => canAccessModule(permissionContext, moduleLabelByKey[String(record.module_key).toLowerCase()] ?? toTitle(record.module_key)));
   const connectedSystems = systems.data ?? [];
   const fileUploads = uploads.data ?? [];
   const moduleCounts = analytics.data?.module_record_counts ?? {};
@@ -123,14 +141,23 @@ export function DashboardPage({ user }: { user: RuntimeUser }) {
       route: '/operations',
       visible: canViewOperations,
     },
-    {
-      label: 'Inventory Value',
-      value: formatCurrency(inventory.data?.total_inventory_value, currency),
-      helper: `${formatNumber(analytics.data?.inventory_total_quantity)} units tracked`,
-      accent: 'amber' as const,
-      route: '/inventory',
-      visible: canViewInventory,
-    },
+    canViewFinancial
+      ? {
+          label: 'Inventory Value',
+          value: formatCurrency(inventory.data?.total_inventory_value, currency),
+          helper: `${formatNumber(analytics.data?.inventory_total_quantity)} units tracked`,
+          accent: 'amber' as const,
+          route: '/inventory',
+          visible: canViewInventory,
+        }
+      : {
+          label: 'Inventory Quantity',
+          value: formatNumber(analytics.data?.inventory_total_quantity),
+          helper: 'Units tracked in assigned scope',
+          accent: 'amber' as const,
+          route: '/inventory',
+          visible: canViewInventory,
+        },
     {
       label: 'Open Approvals',
       value: formatNumber(admin.data?.open_approvals ?? admin.data?.pending_actions),

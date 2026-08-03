@@ -10,6 +10,7 @@ import { ScrollableTableFrame } from '../components/ScrollableTableFrame';
 import { StatCard } from '../components/StatCard';
 import { StatusBadge } from '../components/StatusBadge';
 import { formatCurrency } from '../lib/format';
+import { canAccessModule, canViewFinancialData, filterFinancialTableRows, filterScopedTableRows, type PermissionContext } from '../lib/rbac';
 import { useDismissibleLayer } from '../lib/useDismissibleLayer';
 import {
   assetHealthRecords,
@@ -51,11 +52,13 @@ const maintenanceNav: Array<{ section: MaintenanceSection; label: string; path: 
 const sectionByPath = Object.fromEntries(maintenanceNav.map((item) => [item.path, item.section])) as Record<string, MaintenanceSection>;
 
 export function MaintenanceModulePage({ user }: { user: RuntimeUser }) {
-  void user;
   const { selectedClient, platformUser } = usePlatform();
   const location = useLocation();
   const section = sectionByPath[location.pathname] ?? 'dashboard';
-  const maintenanceAllowed = platformUser.assignedModules.includes('Maintenance') && (!selectedClient || selectedClient.enabledModules.includes('Maintenance'));
+  const accessContext = { user, selectedClient, platformUser };
+  const maintenanceAllowed = canAccessModule(accessContext, 'Maintenance');
+  const canViewFinancial = canViewFinancialData(accessContext);
+  const visibleNav = canViewFinancial ? maintenanceNav : maintenanceNav.filter((item) => item.section !== 'cost');
 
   if (!maintenanceAllowed) {
     return (
@@ -70,33 +73,35 @@ export function MaintenanceModulePage({ user }: { user: RuntimeUser }) {
   return (
     <div className="space-y-4">
       <ModuleNavigationTabs
-        items={maintenanceNav}
+        items={visibleNav}
         dashboardPath="/maintenance"
         moduleName="Maintenance"
-        description="Company-level asset reliability, work execution, preventive maintenance, breakdowns, cost, and health."
+        description={canViewFinancial ? 'Company-level asset reliability, work execution, preventive maintenance, breakdowns, cost, and health.' : 'Company-level asset reliability, work execution, preventive maintenance, breakdowns, and health.'}
       />
-      <MaintenanceSectionContent section={section} />
+      <MaintenanceSectionContent section={section} accessContext={accessContext} />
     </div>
   );
 }
 
-function MaintenanceSectionContent({ section }: { section: MaintenanceSection }) {
-  if (section === 'dashboard') return <MaintenanceDashboard />;
-  if (section === 'assets') return <MaintenanceRegister title="Asset Register" description="Company assets, machines, ownership, criticality, and maintenance history access." rows={assetRows()} searchKeys={['Asset ID', 'Asset Name', 'Machine', 'Serial Number', 'Manufacturer']} action="Create Asset" />;
-  if (section === 'hierarchy') return <MaintenanceRegister title="Asset Hierarchy" description="Plant to line to machine to component structure for spare linkage and traceability." rows={hierarchyRows()} searchKeys={['Node ID', 'Asset / Component Name', 'Parent Asset', 'Level']} action="Add Child Asset" />;
-  if (section === 'work-orders') return <MaintenanceRegister title="Work Orders" description="Preventive, corrective, breakdown, inspection, calibration, and lubrication work orders." rows={workOrderRows()} searchKeys={['Work Order ID', 'Asset', 'Assigned Technician', 'Maintenance Type']} action="Create Work Order" />;
-  if (section === 'preventive') return <MaintenanceRegister title="Preventive Maintenance" description="Planned maintenance schedule, compliance, upcoming tasks, and overdue PM work." rows={preventiveRows()} searchKeys={['PM Schedule ID', 'Asset', 'Assigned Technician']} action="Create PM Schedule" />;
-  if (section === 'corrective') return <MaintenanceRegister title="Corrective Maintenance" description="Non-emergency corrective repairs identified during operation, inspection, or quality checks." rows={correctiveRows()} searchKeys={['Corrective WO ID', 'Asset', 'Issue Description', 'Assigned Technician']} action="Create Corrective Work Order" />;
-  if (section === 'breakdown') return <MaintenanceRegister title="Breakdown Maintenance" description="Urgent breakdowns, root cause, downtime hours, production impact, and repair status." rows={breakdownRows()} searchKeys={['Breakdown ID', 'Asset', 'Line', 'Assigned Technician', 'Root Cause']} action="Log Breakdown" />;
-  if (section === 'calendar') return <MaintenanceRegister title="Maintenance Calendar" description="Daily, weekly, monthly, asset, technician, and plant maintenance schedule." rows={calendarRows()} searchKeys={['Calendar ID', 'Asset', 'Technician', 'Maintenance Type']} action="Create Maintenance Task" />;
-  if (section === 'spares') return <MaintenanceRegister title="Spare Parts" description="Spare availability, shortage risk, consumption, and maintenance material requirements." rows={spareRows()} searchKeys={['Spare Part ID', 'Spare Name', 'Linked Asset', 'Supplier']} action="Request Purchase" />;
-  if (section === 'cost') return <CostPanel />;
-  if (section === 'asset-health') return <AssetHealthPanel />;
-  if (section === 'reports') return <ReportsPanel />;
-  return <MaintenanceRegister title="Maintenance Audit" description="Business-friendly audit history for asset and maintenance changes." rows={auditRows()} searchKeys={['Timestamp', 'User', 'Action', 'Maintenance Area', 'Reference ID']} action="Export Audit" />;
+function MaintenanceSectionContent({ section, accessContext }: { section: MaintenanceSection; accessContext: PermissionContext }) {
+  const canViewFinancial = canViewFinancialData(accessContext);
+  if (section === 'dashboard' || (section === 'cost' && !canViewFinancial)) return <MaintenanceDashboard accessContext={accessContext} />;
+  if (section === 'assets') return <MaintenanceRegister accessContext={accessContext} title="Asset Register" description="Company assets, machines, ownership, criticality, and maintenance history access." rows={assetRows()} searchKeys={['Asset ID', 'Asset Name', 'Machine', 'Serial Number', 'Manufacturer']} action="Create Asset" />;
+  if (section === 'hierarchy') return <MaintenanceRegister accessContext={accessContext} title="Asset Hierarchy" description="Plant to line to machine to component structure for spare linkage and traceability." rows={hierarchyRows()} searchKeys={['Node ID', 'Asset / Component Name', 'Parent Asset', 'Level']} action="Add Child Asset" />;
+  if (section === 'work-orders') return <MaintenanceRegister accessContext={accessContext} title="Work Orders" description="Preventive, corrective, breakdown, inspection, calibration, and lubrication work orders." rows={workOrderRows()} searchKeys={['Work Order ID', 'Asset', 'Assigned Technician', 'Maintenance Type']} action="Create Work Order" />;
+  if (section === 'preventive') return <MaintenanceRegister accessContext={accessContext} title="Preventive Maintenance" description="Planned maintenance schedule, compliance, upcoming tasks, and overdue PM work." rows={preventiveRows()} searchKeys={['PM Schedule ID', 'Asset', 'Assigned Technician']} action="Create PM Schedule" />;
+  if (section === 'corrective') return <MaintenanceRegister accessContext={accessContext} title="Corrective Maintenance" description="Non-emergency corrective repairs identified during operation, inspection, or quality checks." rows={correctiveRows()} searchKeys={['Corrective WO ID', 'Asset', 'Issue Description', 'Assigned Technician']} action="Create Corrective Work Order" />;
+  if (section === 'breakdown') return <MaintenanceRegister accessContext={accessContext} title="Breakdown Maintenance" description="Urgent breakdowns, root cause, downtime hours, production impact, and repair status." rows={breakdownRows()} searchKeys={['Breakdown ID', 'Asset', 'Line', 'Assigned Technician', 'Root Cause']} action="Log Breakdown" />;
+  if (section === 'calendar') return <MaintenanceRegister accessContext={accessContext} title="Maintenance Calendar" description="Daily, weekly, monthly, asset, technician, and plant maintenance schedule." rows={calendarRows()} searchKeys={['Calendar ID', 'Asset', 'Technician', 'Maintenance Type']} action="Create Maintenance Task" />;
+  if (section === 'spares') return <MaintenanceRegister accessContext={accessContext} title="Spare Parts" description="Spare availability, shortage risk, consumption, and maintenance material requirements." rows={spareRows()} searchKeys={['Spare Part ID', 'Spare Name', 'Linked Asset', 'Supplier']} action="Request Purchase" />;
+  if (section === 'cost') return <CostPanel accessContext={accessContext} />;
+  if (section === 'asset-health') return <AssetHealthPanel accessContext={accessContext} />;
+  if (section === 'reports') return <ReportsPanel accessContext={accessContext} />;
+  return <MaintenanceRegister accessContext={accessContext} title="Maintenance Audit" description="Business-friendly audit history for asset and maintenance changes." rows={auditRows()} searchKeys={['Timestamp', 'User', 'Action', 'Maintenance Area', 'Reference ID']} action="Export Audit" />;
 }
 
-function MaintenanceDashboard() {
+function MaintenanceDashboard({ accessContext }: { accessContext: PermissionContext }) {
+  const canViewFinancial = canViewFinancialData(accessContext);
   const availability = Math.round(assetHealthRecords.reduce((sum, item) => sum + item.availability, 0) / assetHealthRecords.length);
   const health = Math.round(assetHealthRecords.reduce((sum, item) => sum + item.healthScore, 0) / assetHealthRecords.length);
   const openWorkOrders = workOrders.filter((item) => ['Open', 'Assigned', 'In Progress', 'On Hold', 'Overdue'].includes(item.status)).length;
@@ -121,24 +126,24 @@ function MaintenanceDashboard() {
         <StatCard label="Downtime Hours" value={downtime.toFixed(1)} helper="Breakdown downtime" accent="amber" />
         <StatCard label="MTTR" value={`${mttr} hrs`} helper="Mean time to repair" accent="blue" />
         <StatCard label="MTBF" value={`${mtbf} hrs`} helper="Mean time between failures" accent="blue" />
-        <StatCard label="Maintenance Cost" value={formatCurrency(totalCost, maintenanceCompany.currency)} helper="Current maintenance spend" accent="violet" />
+        {canViewFinancial ? <StatCard label="Maintenance Cost" value={formatCurrency(totalCost, maintenanceCompany.currency)} helper="Current maintenance spend" accent="violet" /> : null}
         <StatCard label="Critical Asset Risk" value={criticalRisk} helper="Critical or down assets" accent="amber" />
         <StatCard label="Maintenance Health Score" value="87%" helper="Reliability adjusted" accent="emerald" />
       </div>
       <MaintenanceFilters />
       <div className="grid gap-5 xl:grid-cols-2">
         <Panel title="Asset Availability Trend" description="Available and unavailable assets by date."><MaintenanceLineChart data={[{ name: 'Jun 19', value: 84 }, { name: 'Jun 20', value: 86 }, { name: 'Jun 21', value: 88 }, { name: 'Jun 22', value: 90 }, { name: 'Jun 23', value: 89 }, { name: 'Jun 24', value: availability }]} /></Panel>
-        <Panel title="Open Work Orders" description="Open, assigned, in-progress, overdue, and held work orders."><MaintenanceDataTable rows={workOrderRows().filter((row) => !['Completed', 'Closed'].includes(String(row.Status)))} /></Panel>
+        <Panel title="Open Work Orders" description="Open, assigned, in-progress, overdue, and held work orders."><MaintenanceDataTable accessContext={accessContext} rows={workOrderRows().filter((row) => !['Completed', 'Closed'].includes(String(row.Status)))} /></Panel>
         <Panel title="Preventive Maintenance Compliance" description="Planned, completed, overdue, and compliance percentage by asset."><MaintenanceBarChart data={preventiveSchedules.map((item) => ({ name: item.asset, compliance: item.compliance }))} bars={['compliance']} /></Panel>
-        <Panel title="Breakdown Summary" description="Active and recently closed breakdowns with downtime cost impact."><MaintenanceDataTable rows={breakdownRows().slice(0, 6)} /></Panel>
-        <Panel title="Spare Parts Risk" description="Low-stock and stockout risks linked to maintenance assets."><MaintenanceDataTable rows={spareRows().filter((row) => ['Critical', 'Low Stock', 'Stockout'].includes(String(row.Status)))} /></Panel>
-        <Panel title="Maintenance Cost Trend" description="Cost by maintenance category and work order."><MaintenanceBarChart data={costByType()} bars={['amount']} /></Panel>
+        <Panel title="Breakdown Summary" description={canViewFinancial ? 'Active and recently closed breakdowns with downtime cost impact.' : 'Active and recently closed breakdowns with downtime impact.'}><MaintenanceDataTable accessContext={accessContext} rows={breakdownRows().slice(0, 6)} /></Panel>
+        <Panel title="Spare Parts Risk" description="Low-stock and stockout risks linked to maintenance assets."><MaintenanceDataTable accessContext={accessContext} rows={spareRows().filter((row) => ['Critical', 'Low Stock', 'Stockout'].includes(String(row.Status)))} /></Panel>
+        {canViewFinancial ? <Panel title="Maintenance Cost Trend" description="Cost by maintenance category and work order."><MaintenanceBarChart data={costByType()} bars={['amount']} /></Panel> : <Panel title="Maintenance Risk Trend" description="Open work orders by maintenance category."><MaintenanceBarChart data={riskByType()} bars={['count']} /></Panel>}
       </div>
     </div>
   );
 }
 
-function CostPanel() {
+function CostPanel({ accessContext }: { accessContext: PermissionContext }) {
   const total = costRecords.reduce((sum, item) => sum + item.amount, 0);
   const breakdown = costRecords.filter((item) => ['Downtime Cost', 'Spare Parts'].includes(item.type)).reduce((sum, item) => sum + item.amount, 0);
   const spare = costRecords.filter((item) => item.type === 'Spare Parts').reduce((sum, item) => sum + item.amount, 0);
@@ -154,13 +159,13 @@ function CostPanel() {
       </div>
       <Panel title="Maintenance Cost" description="Track maintenance spend, spare cost, labor, external service, and downtime cost.">
         <MaintenanceBarChart data={costByType()} bars={['amount']} />
-        <div className="mt-5"><MaintenanceDataTable rows={costRows()} /></div>
+        <div className="mt-5"><MaintenanceDataTable accessContext={accessContext} rows={costRows()} /></div>
       </Panel>
     </div>
   );
 }
 
-function AssetHealthPanel() {
+function AssetHealthPanel({ accessContext }: { accessContext: PermissionContext }) {
   return (
     <div className="space-y-5">
       <div className="grid gap-4 md:grid-cols-4">
@@ -171,13 +176,13 @@ function AssetHealthPanel() {
       </div>
       <Panel title="Asset Health" description="Asset condition, availability, MTTR, MTBF, breakdown count, and risk status.">
         <MaintenanceBarChart data={assetHealthRecords.map((item) => ({ name: item.asset, health: item.healthScore, availability: item.availability }))} bars={['health', 'availability']} />
-        <div className="mt-5"><MaintenanceDataTable rows={assetHealthRows()} /></div>
+        <div className="mt-5"><MaintenanceDataTable accessContext={accessContext} rows={assetHealthRows()} /></div>
       </Panel>
     </div>
   );
 }
 
-function MaintenanceRegister({ title, description, rows, searchKeys, action }: { title: string; description: string; rows: TableRow[]; searchKeys: string[]; action: string }) {
+function MaintenanceRegister({ title, description, rows, searchKeys, action, accessContext }: { title: string; description: string; rows: TableRow[]; searchKeys: string[]; action: string; accessContext: PermissionContext }) {
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState('');
   const [drawer, setDrawer] = useState(false);
@@ -202,15 +207,17 @@ function MaintenanceRegister({ title, description, rows, searchKeys, action }: {
           </select>
           <button className="form-button-subtle" onClick={() => { setSearch(''); setStatus(''); }}>Clear</button>
         </div>
-        <MaintenanceDataTable rows={filteredRows} />
+        <MaintenanceDataTable accessContext={accessContext} rows={filteredRows} />
       </Panel>
-      {drawer ? <MaintenanceFormDrawer title={action} onClose={() => setDrawer(false)} /> : null}
+      {drawer ? <MaintenanceFormDrawer accessContext={accessContext} title={action} onClose={() => setDrawer(false)} /> : null}
     </div>
   );
 }
 
-function MaintenanceDataTable({ rows }: { rows: TableRow[] }) {
-  const headers = rows[0] ? Object.keys(rows[0]) : [];
+function MaintenanceDataTable({ rows, accessContext }: { rows: TableRow[]; accessContext?: PermissionContext }) {
+  const scopedRows = accessContext ? filterScopedTableRows(rows, accessContext) : rows;
+  const visibleRows = accessContext ? filterFinancialTableRows(scopedRows, accessContext) : scopedRows;
+  const headers = visibleRows[0] ? Object.keys(visibleRows[0]) : [];
   return (
     <ScrollableTableFrame count={rows.length}>
       <table className="min-w-[1120px] w-full text-sm">
@@ -220,7 +227,7 @@ function MaintenanceDataTable({ rows }: { rows: TableRow[] }) {
           </tr>
         </thead>
         <tbody>
-          {rows.map((row, index) => (
+          {visibleRows.map((row, index) => (
             <tr key={String(Object.values(row)[0] ?? index)} className="border-b border-white/10 hover:bg-white/[0.04]">
               {headers.map((header) => <td key={header} className="px-3 py-3 text-slate-300">{(header === 'Status' || header === 'Risk Status') && typeof row[header] === 'string' ? <StatusBadge status={String(row[header])} /> : row[header]}</td>)}
             </tr>
@@ -231,7 +238,8 @@ function MaintenanceDataTable({ rows }: { rows: TableRow[] }) {
   );
 }
 
-function ReportsPanel() {
+function ReportsPanel({ accessContext }: { accessContext: PermissionContext }) {
+  void accessContext;
   return (
     <div className="space-y-5">
       <MaintenanceFilters />
@@ -271,7 +279,8 @@ function MaintenanceFilters({ compact = false }: { compact?: boolean }) {
   );
 }
 
-function MaintenanceFormDrawer({ title, onClose }: { title: string; onClose: () => void }) {
+function MaintenanceFormDrawer({ title, onClose, accessContext }: { title: string; onClose: () => void; accessContext: PermissionContext }) {
+  const canViewFinancial = canViewFinancialData(accessContext);
   const drawerRef = useDismissibleLayer<HTMLElement>({
     open: true,
     onDismiss: onClose,
@@ -293,7 +302,7 @@ function MaintenanceFormDrawer({ title, onClose }: { title: string; onClose: () 
           <Field label="Maintenance Type"><select className="form-input mt-1 w-full">{['Preventive', 'Corrective', 'Breakdown', 'Inspection', 'Calibration', 'Lubrication'].map((item) => <option key={item}>{item}</option>)}</select></Field>
           <Field label="Priority"><select className="form-input mt-1 w-full">{['Critical', 'High', 'Medium', 'Low'].map((item) => <option key={item}>{item}</option>)}</select></Field>
           <Field label="Technician"><select className="form-input mt-1 w-full">{maintenanceCompany.technicians.map((item) => <option key={item}>{item}</option>)}</select></Field>
-          <Field label="Estimated Cost"><input className="form-input mt-1 w-full" min={0} type="number" defaultValue={0} /></Field>
+          {canViewFinancial ? <Field label="Estimated Cost"><input className="form-input mt-1 w-full" min={0} type="number" defaultValue={0} /></Field> : null}
           <Field label="Planned Date"><input className="form-input mt-1 w-full" type="date" defaultValue="2026-06-24" /></Field>
           <Field label="Business Reason" className="md:col-span-2"><textarea className="form-input mt-1 min-h-24 w-full" placeholder="Reason required before changing maintenance status" /></Field>
         </div>
@@ -338,6 +347,14 @@ function costByType() {
   return Object.values(costRecords.reduce<Record<string, { name: string; amount: number }>>((acc, item) => {
     acc[item.type] = acc[item.type] ?? { name: item.type, amount: 0 };
     acc[item.type].amount += item.amount;
+    return acc;
+  }, {}));
+}
+
+function riskByType() {
+  return Object.values(workOrders.reduce<Record<string, { name: string; count: number }>>((acc, item) => {
+    acc[item.type] = acc[item.type] ?? { name: item.type, count: 0 };
+    if (!['Completed', 'Closed'].includes(item.status)) acc[item.type].count += 1;
     return acc;
   }, {}));
 }

@@ -13,6 +13,7 @@ import { StatCard } from '../components/StatCard';
 import { StatusBadge } from '../components/StatusBadge';
 import { formatCurrency } from '../lib/format';
 import { applyModuleFilters, type ModuleFilterValues } from '../lib/moduleFilters';
+import { canAccessModule, canViewFinancialData, filterFinancialTableRows, type PermissionContext } from '../lib/rbac';
 import { useDismissibleLayer } from '../lib/useDismissibleLayer';
 import {
   adjustments,
@@ -62,11 +63,13 @@ const inventoryNav: Array<{ section: InventorySection; label: string; path: stri
 const sectionByPath: Record<string, InventorySection> = Object.fromEntries(inventoryNav.map((item) => [item.path, item.section])) as Record<string, InventorySection>;
 
 export function InventoryModulePage({ user }: { user: RuntimeUser }) {
-  void user;
   const { selectedClient, platformUser } = usePlatform();
   const location = useLocation();
   const section = sectionByPath[location.pathname] ?? 'dashboard';
-  const inventoryAllowed = platformUser.assignedModules.includes('Inventory') && (!selectedClient || selectedClient.enabledModules.includes('Inventory'));
+  const accessContext = { user, selectedClient, platformUser };
+  const inventoryAllowed = canAccessModule(accessContext, 'Inventory');
+  const canViewFinancial = canViewFinancialData(accessContext);
+  const allowedNav = canViewFinancial ? inventoryNav : inventoryNav.filter((item) => item.section !== 'valuation');
 
   if (!inventoryAllowed) {
     return (
@@ -79,37 +82,40 @@ export function InventoryModulePage({ user }: { user: RuntimeUser }) {
   return (
     <div className="space-y-4">
       <ModuleNavigationTabs
-        items={inventoryNav}
+        items={allowedNav}
         dashboardPath="/inventory"
         moduleName="Inventory"
-        description="Company-wide stock visibility, movement, valuation, traceability, aging, and replenishment risk."
+        description={canViewFinancial ? 'Company-wide stock visibility, movement, valuation, traceability, aging, and replenishment risk.' : 'Company-wide stock visibility, movement, traceability, aging, and replenishment risk.'}
       />
-      <InventorySectionContent section={section} />
+      <InventorySectionContent section={section} accessContext={accessContext} />
     </div>
   );
 }
 
-function InventorySectionContent({ section }: { section: InventorySection }) {
-  if (section === 'dashboard') return <InventoryDashboard />;
-  if (section === 'overview') return <InventoryRegister title="Inventory Overview" description="What inventory exists, where it exists, availability, reservation, and value." rows={overviewRows()} searchKeys={['Item Code', 'Item Name', 'Warehouse', 'Category']} action="Create Inventory Item" />;
-  if (section === 'receipts') return <InventoryRegister title="Goods Receipts" description="Purchase, production, transfer, and return receipts that increase inventory and value." rows={receiptRows()} searchKeys={['Receipt Number', 'Supplier', 'PO Number', 'Item']} action="Create Receipt" />;
-  if (section === 'issues') return <InventoryRegister title="Goods Issues" description="Production, maintenance, sales, sample, and scrap issues that reduce inventory." rows={issueRows()} searchKeys={['Issue Number', 'Warehouse', 'Department', 'Item']} action="Create Issue" />;
-  if (section === 'transfers') return <InventoryRegister title="Stock Transfers" description="Warehouse, plant, and bin transfers with source and destination visibility." rows={transferRows()} searchKeys={['Transfer Number', 'Source', 'Destination', 'Item']} action="Create Transfer" />;
-  if (section === 'adjustments') return <InventoryRegister title="Inventory Adjustments" description="Damage, loss, found stock, and audit corrections with approval workflow." rows={adjustmentRows()} searchKeys={['Adjustment Number', 'Reason', 'Item', 'Warehouse']} action="Create Adjustment" />;
-  if (section === 'cycle-counts') return <InventoryRegister title="Cycle Counts" description="Cycle count variance, accuracy, and posting status." rows={cycleRows()} searchKeys={['Count Number', 'Warehouse', 'Item']} action="Create Count" />;
-  if (section === 'physical') return <PhysicalInventory />;
-  if (section === 'aging') return <InventoryRegister title="Inventory Aging" description="Aging quantity and value by bucket." rows={agingRows()} searchKeys={['Bucket']} action="Export Aging" />;
-  if (section === 'dead-stock') return <InventoryRegister title="Dead Stock" description="No movement for 180+ days." rows={deadStockRows()} searchKeys={['Item', 'Warehouse']} action="Create Disposal Review" />;
-  if (section === 'slow-moving') return <InventoryRegister title="Slow Moving Inventory" description="Low movement count, high coverage days, and trapped cash." rows={slowMovingRows()} searchKeys={['Item']} action="Create Optimization Action" />;
-  if (section === 'reorder') return <InventoryRegister title="Reorder Management" description="Reorder points, safety stock, min/max, and stockout status." rows={reorderRows()} searchKeys={['Item', 'Status']} action="Create Reorder Draft" />;
-  if (section === 'lots') return <InventoryRegister title="Lot Management" description="Lot number, manufacturing date, expiry date, quantity, and trace actions." rows={lotRows()} searchKeys={['Lot Number', 'Item', 'Status']} action="Create Lot" />;
-  if (section === 'serials') return <InventoryRegister title="Serial Tracking" description="Serial-level status and movement history." rows={serialRows()} searchKeys={['Serial Number', 'Item', 'Warehouse', 'Status']} action="Create Serial" />;
-  if (section === 'valuation') return <InventoryRegister title="Inventory Valuation" description="FIFO, LIFO, weighted average, standard cost, value, unit cost, and cost variance." rows={valuationTableRows()} searchKeys={['Item', 'Method']} action="Run Valuation" />;
-  if (section === 'audit') return <InventoryRegister title="Inventory Audit" description="Business-friendly audit history for stock and value changes." rows={auditRows()} searchKeys={['Timestamp', 'User', 'Action', 'Item']} action="Export Audit" />;
-  return <ReportsPanel />;
+function InventorySectionContent({ section, accessContext }: { section: InventorySection; accessContext: PermissionContext }) {
+  const canViewFinancial = canViewFinancialData(accessContext);
+  if (section === 'valuation' && !canViewFinancial) return <InventoryDashboard accessContext={accessContext} />;
+  if (section === 'dashboard') return <InventoryDashboard accessContext={accessContext} />;
+  if (section === 'overview') return <InventoryRegister accessContext={accessContext} title="Inventory Overview" description={canViewFinancial ? 'What inventory exists, where it exists, availability, reservation, and value.' : 'What inventory exists, where it exists, availability, reservation, and risk.'} rows={overviewRows()} searchKeys={['Item Code', 'Item Name', 'Warehouse', 'Category']} action="Create Inventory Item" />;
+  if (section === 'receipts') return <InventoryRegister accessContext={accessContext} title="Goods Receipts" description={canViewFinancial ? 'Purchase, production, transfer, and return receipts that increase inventory and value.' : 'Purchase, production, transfer, and return receipts that increase inventory quantity.'} rows={receiptRows()} searchKeys={['Receipt Number', 'Supplier', 'PO Number', 'Item']} action="Create Receipt" />;
+  if (section === 'issues') return <InventoryRegister accessContext={accessContext} title="Goods Issues" description="Production, maintenance, sales, sample, and scrap issues that reduce inventory." rows={issueRows()} searchKeys={['Issue Number', 'Warehouse', 'Department', 'Item']} action="Create Issue" />;
+  if (section === 'transfers') return <InventoryRegister accessContext={accessContext} title="Stock Transfers" description="Warehouse, plant, and bin transfers with source and destination visibility." rows={transferRows()} searchKeys={['Transfer Number', 'Source', 'Destination', 'Item']} action="Create Transfer" />;
+  if (section === 'adjustments') return <InventoryRegister accessContext={accessContext} title="Inventory Adjustments" description="Damage, loss, found stock, and audit corrections with approval workflow." rows={adjustmentRows()} searchKeys={['Adjustment Number', 'Reason', 'Item', 'Warehouse']} action="Create Adjustment" />;
+  if (section === 'cycle-counts') return <InventoryRegister accessContext={accessContext} title="Cycle Counts" description="Cycle count variance, accuracy, and posting status." rows={cycleRows()} searchKeys={['Count Number', 'Warehouse', 'Item']} action="Create Count" />;
+  if (section === 'physical') return <PhysicalInventory accessContext={accessContext} />;
+  if (section === 'aging') return <InventoryRegister accessContext={accessContext} title="Inventory Aging" description={canViewFinancial ? 'Aging quantity and value by bucket.' : 'Aging quantity and risk by bucket.'} rows={agingRows()} searchKeys={['Bucket']} action="Export Aging" />;
+  if (section === 'dead-stock') return <InventoryRegister accessContext={accessContext} title="Dead Stock" description="No movement for 180+ days." rows={deadStockRows()} searchKeys={['Item', 'Warehouse']} action="Create Disposal Review" />;
+  if (section === 'slow-moving') return <InventoryRegister accessContext={accessContext} title="Slow Moving Inventory" description={canViewFinancial ? 'Low movement count, high coverage days, and trapped cash.' : 'Low movement count and high coverage days.'} rows={slowMovingRows()} searchKeys={['Item']} action="Create Optimization Action" />;
+  if (section === 'reorder') return <InventoryRegister accessContext={accessContext} title="Reorder Management" description="Reorder points, safety stock, min/max, and stockout status." rows={reorderRows()} searchKeys={['Item', 'Status']} action="Create Reorder Draft" />;
+  if (section === 'lots') return <InventoryRegister accessContext={accessContext} title="Lot Management" description="Lot number, manufacturing date, expiry date, quantity, and trace actions." rows={lotRows()} searchKeys={['Lot Number', 'Item', 'Status']} action="Create Lot" />;
+  if (section === 'serials') return <InventoryRegister accessContext={accessContext} title="Serial Tracking" description="Serial-level status and movement history." rows={serialRows()} searchKeys={['Serial Number', 'Item', 'Warehouse', 'Status']} action="Create Serial" />;
+  if (section === 'valuation') return <InventoryRegister accessContext={accessContext} title="Inventory Valuation" description="FIFO, LIFO, weighted average, standard cost, value, unit cost, and cost variance." rows={valuationTableRows()} searchKeys={['Item', 'Method']} action="Run Valuation" />;
+  if (section === 'audit') return <InventoryRegister accessContext={accessContext} title="Inventory Audit" description={canViewFinancial ? 'Business-friendly audit history for stock and value changes.' : 'Business-friendly audit history for stock changes.'} rows={auditRows()} searchKeys={['Timestamp', 'User', 'Action', 'Item']} action="Export Audit" />;
+  return <ReportsPanel accessContext={accessContext} />;
 }
 
-function InventoryDashboard() {
+function InventoryDashboard({ accessContext }: { accessContext: PermissionContext }) {
+  const canViewFinancial = canViewFinancialData(accessContext);
   const [filters, setFilters] = useState<ModuleFilterValues>({});
   const filteredItems = useMemo(
     () => applyModuleFilters(inventoryItems, filters, { Plant: 'plant', Warehouse: 'warehouse', Product: 'name', Category: 'category' }),
@@ -130,6 +136,7 @@ function InventoryDashboard() {
   const totalValue = filteredItems.reduce((sum, item) => sum + item.value, 0);
   const available = filteredItems.reduce((sum, item) => sum + item.availableQty, 0);
   const reserved = filteredItems.reduce((sum, item) => sum + item.reservedQty, 0);
+  const totalQuantity = filteredItems.reduce((sum, item) => sum + item.availableQty + item.reservedQty + item.blockedQty + item.inTransitQty, 0);
   const deadValue = filteredDeadStock.reduce((sum, item) => sum + item.value, 0);
   const slowValue = filteredSlowMoving.reduce((sum, item) => sum + item.inventoryValue, 0);
   const stockoutRisk = filteredReorderRules.filter((item) => ['Critical', 'Stockout'].includes(item.status)).length;
@@ -140,31 +147,31 @@ function InventoryDashboard() {
   return (
     <div className="space-y-5">
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
-        <StatCard label="Total Inventory Value" value={formatCurrency(totalValue, inventoryCompany.currency)} helper="Filtered inventory value" accent="blue" />
+        {canViewFinancial ? <StatCard label="Total Inventory Value" value={formatCurrency(totalValue, inventoryCompany.currency)} helper="Filtered inventory value" accent="blue" /> : <StatCard label="Total Inventory Quantity" value={totalQuantity.toLocaleString()} helper="Filtered stock quantity" accent="blue" />}
         <StatCard label="Available Inventory" value={available.toLocaleString()} helper="Qty available" accent="emerald" />
         <StatCard label="Reserved Inventory" value={reserved.toLocaleString()} helper="Committed to demand" accent="amber" />
         <StatCard label="Inventory Accuracy" value="98.1%" helper="Cycle count weighted" accent="emerald" />
         <StatCard label="Coverage Days" value={coverageDays || '0'} helper="Filtered weighted coverage" accent="violet" />
         <StatCard label="Inventory Turns" value="8.4" helper="Annualized" accent="blue" />
-        <StatCard label="Dead Stock Value" value={formatCurrency(deadValue, inventoryCompany.currency)} helper="No movement 180+ days" accent="amber" />
-        <StatCard label="Slow Moving Value" value={formatCurrency(slowValue, inventoryCompany.currency)} helper="Low movement stock" accent="amber" />
+        {canViewFinancial ? <StatCard label="Dead Stock Value" value={formatCurrency(deadValue, inventoryCompany.currency)} helper="No movement 180+ days" accent="amber" /> : <StatCard label="Dead Stock Items" value={filteredDeadStock.length} helper="No movement 180+ days" accent="amber" />}
+        {canViewFinancial ? <StatCard label="Slow Moving Value" value={formatCurrency(slowValue, inventoryCompany.currency)} helper="Low movement stock" accent="amber" /> : <StatCard label="Slow Moving Items" value={filteredSlowMoving.length} helper="Low movement stock" accent="amber" />}
         <StatCard label="Stockout Risk" value={stockoutRisk} helper="Critical reorder items" accent="amber" />
         <StatCard label="Inventory Health Score" value="91%" helper="Risk adjusted" accent="emerald" />
       </div>
       <InventoryFilters filters={filters} onChange={setFilters} />
       <div className="grid gap-5 xl:grid-cols-2">
-        <Panel title="Inventory Value Trend" description="Mock trend from inventory reduction and value optimization."><InventoryLineChart data={[{ name: 'Jan', value: 10000000 }, { name: 'Feb', value: 9400000 }, { name: 'Mar', value: 9100000 }, { name: 'Apr', value: 8700000 }, { name: 'May', value: 8300000 }, { name: 'Jun', value: 8000000 }]} /></Panel>
-        <Panel title="Inventory by Warehouse" description="Current value by warehouse."><InventoryBarChart data={warehouseValueRows(filteredItems)} bars={['value']} /></Panel>
+        {canViewFinancial ? <Panel title="Inventory Value Trend" description="Mock trend from inventory reduction and value optimization."><InventoryLineChart data={[{ name: 'Jan', value: 10000000 }, { name: 'Feb', value: 9400000 }, { name: 'Mar', value: 9100000 }, { name: 'Apr', value: 8700000 }, { name: 'May', value: 8300000 }, { name: 'Jun', value: 8000000 }]} /></Panel> : <Panel title="Inventory Quantity Trend" description="Operational stock quantity trend."><InventoryLineChart data={[{ name: 'Jan', value: 24500 }, { name: 'Feb', value: 23100 }, { name: 'Mar', value: 22200 }, { name: 'Apr', value: 21600 }, { name: 'May', value: 21150 }, { name: 'Jun', value: totalQuantity }]} /></Panel>}
+        <Panel title={canViewFinancial ? 'Inventory by Warehouse' : 'Inventory Quantity by Warehouse'} description={canViewFinancial ? 'Current value by warehouse.' : 'Current quantity by warehouse.'}><InventoryBarChart data={canViewFinancial ? warehouseValueRows(filteredItems) : warehouseQuantityRows(filteredItems)} bars={[canViewFinancial ? 'value' : 'quantity']} /></Panel>
         <Panel title="Inventory Coverage" description="Coverage days by item."><InventoryBarChart data={filteredItems.slice(0, 8).map((item) => ({ name: item.name, coverage: item.coverageDays }))} bars={['coverage']} /></Panel>
-        <Panel title="Stockout Risk" description="Items below reorder point or safety stock."><InventoryDataTable rows={reorderRows(filteredReorderRules).filter((row) => ['Critical', 'Stockout'].includes(String(row.Status)))} /></Panel>
-        <Panel title="Dead Stock Summary" description="Items with no movement for 180+ days."><InventoryDataTable rows={deadStockRows(filteredDeadStock)} /></Panel>
-        <Panel title="Slow Moving Inventory" description="Low movement count and high coverage days."><InventoryDataTable rows={slowMovingRows(filteredSlowMoving)} /></Panel>
+        <Panel title="Stockout Risk" description="Items below reorder point or safety stock."><InventoryDataTable accessContext={accessContext} rows={reorderRows(filteredReorderRules).filter((row) => ['Critical', 'Stockout'].includes(String(row.Status)))} /></Panel>
+        <Panel title="Dead Stock Summary" description="Items with no movement for 180+ days."><InventoryDataTable accessContext={accessContext} rows={deadStockRows(filteredDeadStock)} /></Panel>
+        <Panel title="Slow Moving Inventory" description="Low movement count and high coverage days."><InventoryDataTable accessContext={accessContext} rows={slowMovingRows(filteredSlowMoving)} /></Panel>
       </div>
     </div>
   );
 }
 
-function InventoryRegister({ title, description, rows, searchKeys, action }: { title: string; description: string; rows: TableRow[]; searchKeys: string[]; action: string }) {
+function InventoryRegister({ title, description, rows, searchKeys, action, accessContext }: { title: string; description: string; rows: TableRow[]; searchKeys: string[]; action: string; accessContext: PermissionContext }) {
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState('');
   const [drawer, setDrawer] = useState(false);
@@ -181,42 +188,44 @@ function InventoryRegister({ title, description, rows, searchKeys, action }: { t
           <select className="form-input" value={status} onChange={(event) => setStatus(event.target.value)}><option value="">All statuses</option>{['Healthy', 'Warning', 'Critical', 'Review', 'Posted', 'Approved', 'Pending Approval', 'Dead Stock', 'Slow Moving'].map((item) => <option key={item}>{item}</option>)}</select>
           <button type="button" className="form-button-subtle" onClick={() => { setSearch(''); setStatus(''); }}>Clear</button>
         </div>
-        <InventoryDataTable rows={filteredRows} />
+        <InventoryDataTable accessContext={accessContext} rows={filteredRows} />
       </Panel>
       {drawer ? <InventoryFormDrawer title={action} onClose={() => setDrawer(false)} /> : null}
     </div>
   );
 }
 
-function InventoryDataTable({ rows }: { rows: TableRow[] }) {
-  const headers = rows[0] ? Object.keys(rows[0]) : [];
+function InventoryDataTable({ rows, accessContext }: { rows: TableRow[]; accessContext: PermissionContext }) {
+  const visibleRows = filterFinancialTableRows(rows, accessContext);
+  const headers = visibleRows[0] ? Object.keys(visibleRows[0]) : [];
   return (
-    <ScrollableTableFrame count={rows.length}>
+    <ScrollableTableFrame count={visibleRows.length}>
       <table className="min-w-[1100px] w-full text-sm">
         <thead><tr className="border-b border-white/10 text-left text-xs uppercase tracking-[0.08em] text-slate-500">{headers.map((header) => <th key={header} className="px-3 py-3">{header}</th>)}</tr></thead>
-        <tbody>{rows.map((row, index) => <tr key={String(Object.values(row)[0] ?? index)} className="border-b border-white/10 hover:bg-white/[0.04]">{headers.map((header) => <td key={header} className="px-3 py-3 text-slate-300">{header === 'Status' && typeof row[header] === 'string' ? <StatusBadge status={String(row[header])} /> : row[header]}</td>)}</tr>)}</tbody>
+        <tbody>{visibleRows.map((row, index) => <tr key={String(Object.values(row)[0] ?? index)} className="border-b border-white/10 hover:bg-white/[0.04]">{headers.map((header) => <td key={header} className="px-3 py-3 text-slate-300">{header === 'Status' && typeof row[header] === 'string' ? <StatusBadge status={String(row[header])} /> : row[header]}</td>)}</tr>)}</tbody>
       </table>
     </ScrollableTableFrame>
   );
 }
 
-function PhysicalInventory() {
+function PhysicalInventory({ accessContext }: { accessContext: PermissionContext }) {
   return (
     <Panel title="Physical Inventory" description="Freeze, count, verify, approve, and post adjustments.">
       <div className="mb-5 grid gap-3 md:grid-cols-5">{physicalInventorySteps.map((step, index) => <div key={step.step} className="rounded-xl border border-white/10 bg-slate-950/30 p-4"><p className="text-xs text-slate-500">Step {index + 1}</p><p className="mt-1 font-medium text-white">{step.step}</p><p className="mt-2 text-sm text-slate-400">{step.owner}</p><div className="mt-3"><StatusBadge status={step.status} /></div></div>)}</div>
-      <InventoryDataTable rows={physicalInventorySteps.map((step) => ({ Step: step.step, Owner: step.owner, Status: step.status, 'Completed On': step.completedOn }))} />
+      <InventoryDataTable accessContext={accessContext} rows={physicalInventorySteps.map((step) => ({ Step: step.step, Owner: step.owner, Status: step.status, 'Completed On': step.completedOn }))} />
     </Panel>
   );
 }
 
-function ReportsPanel() {
+function ReportsPanel({ accessContext }: { accessContext: PermissionContext }) {
   const [filters, setFilters] = useState<ModuleFilterValues>({});
+  const visibleReports = canViewFinancialData(accessContext) ? inventoryReports : inventoryReports.filter((report) => !isFinancialInventoryReport(report));
   return (
     <div className="space-y-5">
       <InventoryFilters filters={filters} onChange={setFilters} />
       <Panel title="Inventory Reports" description="Preview and export inventory reports as PDF, Excel, or CSV.">
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {inventoryReports.map((report) => (
+          {visibleReports.map((report) => (
             <div key={report} className="rounded-xl border border-white/10 bg-slate-950/30 p-4">
               <p className="font-medium text-white">{report}</p>
               <p className="mt-2 text-sm text-slate-400">Company-scoped report for ABC Manufacturing.</p>
@@ -299,3 +308,5 @@ function serialRows() { return serials.map((item) => ({ 'Serial Number': item.se
 function valuationTableRows() { return valuationRows.map((item) => ({ Item: item.item, Method: item.method, 'Inventory Value': formatCurrency(item.inventoryValue, inventoryCompany.currency), 'Unit Cost': formatCurrency(item.unitCost, inventoryCompany.currency), 'Cost Variance %': `${item.costVariance}%`, Status: item.status, Actions: <RowActions labels={['View', 'Revalue', 'Export']} recordId={item.item} recordTitle={item.item} recordDetails={{ Item: item.item, Method: item.method, Status: item.status }} /> })); }
 function auditRows() { return inventoryAudit.map((item) => ({ Timestamp: item.timestamp, User: item.user, Action: item.action, Item: item.item, 'Previous Value': item.previousValue, 'New Value': item.newValue })); }
 function warehouseValueRows(source = inventoryItems) { return inventoryCompany.warehouses.map((warehouse) => ({ name: warehouse.replace(' Warehouse', ''), value: source.filter((item) => item.warehouse === warehouse).reduce((sum, item) => sum + item.value, 0) })); }
+function warehouseQuantityRows(source = inventoryItems) { return inventoryCompany.warehouses.map((warehouse) => ({ name: warehouse.replace(' Warehouse', ''), quantity: source.filter((item) => item.warehouse === warehouse).reduce((sum, item) => sum + item.availableQty + item.reservedQty + item.blockedQty + item.inTransitQty, 0) })); }
+function isFinancialInventoryReport(report: string) { return /value|valuation|cost|financial/i.test(report); }

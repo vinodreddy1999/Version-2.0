@@ -6,10 +6,12 @@ export type ActionKey = 'view' | 'create' | 'edit' | 'delete' | 'export' | 'impo
 
 export type PermissionContext = {
   user: RuntimeUser;
-  selectedClient?: PlatformClient;
-  platformUser?: PlatformUser;
+  selectedClient?: PlatformClient | null;
+  platformUser?: PlatformUser | null;
   isPlatformContext?: boolean;
 };
+
+const privilegedFinancialRoles: RuntimeUser['role'][] = ['super_admin', 'account_owner', 'organization_admin', 'admin'];
 
 const routeModuleMap: Record<string, string> = {
   '/planning': 'Planning',
@@ -46,21 +48,128 @@ export function canAccessSection(user: RuntimeUser, section: AppSection) {
   return sectionAccess[user.role].includes(section);
 }
 
-export function canAccessModule({ user, selectedClient, platformUser, isPlatformContext }: PermissionContext, moduleName: string) {
+function assignedAccess({ user, platformUser }: PermissionContext) {
+  const userModules = Array.isArray(user.assigned_modules) ? user.assigned_modules : undefined;
+  const userApplications = Array.isArray(user.assigned_applications) ? user.assigned_applications : undefined;
+  return {
+    modules: userModules ?? platformUser?.assignedModules ?? [],
+    applications: userApplications ?? platformUser?.assignedApplications ?? [],
+  };
+}
+
+function hasAssignedAppOrModule(context: PermissionContext, keys: string[]) {
+  const normalizedKeys = keys.map((key) => key.toLowerCase());
+  const access = assignedAccess(context);
+  return [...access.modules, ...access.applications].some((item) => normalizedKeys.includes(item.toLowerCase()));
+}
+
+export function hasOperationalAssignment(context: PermissionContext) {
+  if (context.isPlatformContext && context.user.role === 'super_admin') return true;
+  if (['super_admin', 'account_owner', 'organization_admin', 'admin'].includes(context.user.role)) return true;
+  const access = assignedAccess(context);
+  return access.modules.length > 0 || access.applications.length > 0;
+}
+
+export function canAccessAppSection(context: PermissionContext, section: AppSection) {
+  if (section === 'dashboard') return canAccessSection(context.user, section) && hasOperationalAssignment(context);
+  if (section === 'operations') return canAccessSection(context.user, section) && hasOperationalAssignment(context);
+  if (section === 'data-hub') {
+    return (
+      canAccessSection(context.user, section)
+      || hasAssignedAppOrModule(context, ['Manufacturing Data Hub', 'Integration Hub'])
+      || context.user.permissions.some((permission) => permission.startsWith('integrations.'))
+    );
+  }
+  if (section === 'intelligence') {
+    return (
+      canAccessSection(context.user, section)
+      || hasAssignedAppOrModule(context, ['AI Intelligence'])
+      || context.user.permissions.some((permission) => permission.startsWith('ai.'))
+    );
+  }
+  return canAccessSection(context.user, section);
+}
+
+export function canViewFinancialData({ user, platformUser }: PermissionContext) {
+  if (privilegedFinancialRoles.includes(user.role)) return true;
+  const roleText = [
+    user.role,
+    ...user.permissions,
+    platformUser?.department,
+    ...(platformUser?.roles ?? []),
+  ]
+    .filter(Boolean)
+    .join(' ')
+    .toLowerCase();
+  return ['finance', 'costing', 'profitability', 'commercial', 'cfo', 'controller', 'accountant'].some((term) => roleText.includes(term));
+}
+
+export function isFinancialField(label: string) {
+  const normalized = label.trim().toLowerCase();
+  return [
+    /^value$/,
+    /inventory value/,
+    /aging value/,
+    /value update/,
+    /scrap value/,
+    /unit cost/,
+    /cost variance/,
+    /maintenance cost/,
+    /downtime cost/,
+    /breakdown cost/,
+    /preventive cost/,
+    /corrective cost/,
+    /spare cost/,
+    /^cost$/,
+    /amount/,
+    /price/,
+    /margin/,
+    /profit/,
+    /savings/,
+    /valuation/,
+    /currency/,
+    /financial/,
+  ].some((pattern) => pattern.test(normalized));
+}
+
+export function filterFinancialTableRows<T extends Record<string, unknown>>(rows: T[], context: PermissionContext) {
+  if (canViewFinancialData(context)) return rows;
+  return rows.map((row) => Object.fromEntries(Object.entries(row).filter(([key]) => !isFinancialField(key))) as T);
+}
+
+export function filterScopedTableRows<T extends Record<string, unknown>>(rows: T[], context: PermissionContext) {
+  const scope = getUserDataScope(context.user, context.platformUser ?? undefined);
+  return rows.filter((row) => {
+    const rowPlant = row.Plant ?? row['Plant Name'] ?? row.Site;
+    const rowWarehouse = row.Warehouse ?? row['Warehouse Name'];
+    if (scope.plant && rowPlant && !String(rowPlant).toLowerCase().includes(scope.plant.toLowerCase())) return false;
+    if (scope.warehouse && rowWarehouse && !String(rowWarehouse).toLowerCase().includes(scope.warehouse.toLowerCase())) return false;
+    return true;
+  });
+}
+
+export function canAccessModule(context: PermissionContext, moduleName: string) {
+  const { user, selectedClient, isPlatformContext } = context;
+  const normalizedModule = moduleName.toLowerCase();
   if (isPlatformContext) return user.role === 'super_admin';
   if (!canAccessSection(user, 'operations')) return false;
-  if (selectedClient && !selectedClient.enabledModules.includes(moduleName)) return false;
-  if (platformUser && !platformUser.assignedModules.includes(moduleName)) return false;
+  if (selectedClient && !selectedClient.enabledModules.some((module) => module.toLowerCase() === normalizedModule)) return false;
+  if (normalizedModule === 'costing & profitability' && !canViewFinancialData(context)) return false;
+  if (!assignedAccess(context).modules.some((module) => module.toLowerCase() === normalizedModule)) return false;
   return true;
 }
 
 export function canAccessPage(context: PermissionContext, path: string) {
   if (path.startsWith('/platform')) return context.user.role === 'super_admin' && Boolean(context.isPlatformContext);
-  if (path.startsWith('/workspace/dashboards') || path.startsWith('/dashboard')) return canAccessSection(context.user, 'dashboard');
-  if (path.startsWith('/admin/performance')) return canAccessSection(context.user, 'admin');
-  if (path.startsWith('/admin')) return canAccessSection(context.user, 'admin');
-  if (path.startsWith('/data-hub')) return canAccessSection(context.user, 'data-hub');
-  if (path.startsWith('/intelligence')) return canAccessSection(context.user, 'intelligence');
+  if (path.startsWith('/workspace/dashboards/business-impact') || path.startsWith('/dashboard/business-impact') || path.startsWith('/impact/')) {
+    return canAccessSection(context.user, 'dashboard') && canViewFinancialData(context);
+  }
+  if (path.startsWith('/workspace/dashboards') || path.startsWith('/dashboard')) return canAccessAppSection(context, 'dashboard');
+  if (path.startsWith('/admin/performance')) return canAccessAppSection(context, 'admin');
+  if (path.startsWith('/admin')) return canAccessAppSection(context, 'admin');
+  if (path.startsWith('/data-hub')) return canAccessAppSection(context, 'data-hub');
+  if (path.startsWith('/intelligence')) return canAccessAppSection(context, 'intelligence');
+  if (path.startsWith('/factorypulse') || path.startsWith('/operations')) return canAccessAppSection(context, 'operations');
   const moduleEntry = Object.entries(routeModuleMap).find(([route]) => path === route || path.startsWith(`${route}/`));
   if (moduleEntry) return canAccessModule(context, moduleEntry[1]);
   if (path === '/') return canAccessSection(context.user, 'dashboard');
