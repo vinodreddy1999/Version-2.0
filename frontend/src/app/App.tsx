@@ -55,6 +55,7 @@ const PerformancePage = lazy(() => import('../pages/PerformancePage').then((modu
 const FactoryPulsePage = lazy(() => import('../pages/FactoryPulsePage').then((module) => ({ default: module.FactoryPulsePage })));
 const UnifiedDashboardsPage = lazy(() => import('../pages/UnifiedDashboardsPage').then((module) => ({ default: module.UnifiedDashboardsPage })));
 const EnterpriseAdminPage = lazy(() => import('../pages/EnterpriseAdminPage').then((module) => ({ default: module.EnterpriseAdminPage })));
+const BusinessImpactDashboard = lazy(() => import('../pages/BusinessImpactDashboard').then((module) => ({ default: module.BusinessImpactDashboard })));
 
 const navItems = [
   { to: '/workspace/dashboards', label: 'Dashboards', icon: Gauge, section: 'dashboard' as const },
@@ -725,7 +726,7 @@ function AuthenticatedApp({
               <Route path="/compliance" element={<ModuleRoute user={user} moduleName="Compliance" fallbackPath={allowedFallbackPath}><ModuleWorkspacePage moduleKey="compliance" user={user} /></ModuleRoute>} />
               <Route path="/customer-portal" element={<ModuleRoute user={user} moduleName="Customer Portal" fallbackPath={allowedFallbackPath}><ModuleWorkspacePage moduleKey="customer-portal" user={user} /></ModuleRoute>} />
               <Route path="/supplier-portal" element={<ModuleRoute user={user} moduleName="Supplier Portal" fallbackPath={allowedFallbackPath}><ModuleWorkspacePage moduleKey="supplier-portal" user={user} /></ModuleRoute>} />
-              <Route path="/reports" element={<Navigate to={canViewFinancialData(permissionContext) ? '/workspace/dashboards/business-impact' : '/workspace/dashboards/executive'} replace />} />
+              <Route path="/reports" element={<ModuleRoute user={user} moduleName="Reports & Analytics" fallbackPath={allowedFallbackPath}>{canViewFinancialData(permissionContext) ? <BusinessImpactDashboard /> : <DashboardPage user={user} />}</ModuleRoute>} />
               <Route path="/documents" element={<ModuleRoute user={user} moduleName="Document Management" fallbackPath={allowedFallbackPath}><ModuleWorkspacePage moduleKey="documents" user={user} /></ModuleRoute>} />
               <Route path="/impact/:module/:metric" element={<ProtectedRoute user={user} section="operations" fallbackPath={allowedFallbackPath}>{canViewFinancialData(permissionContext) ? <ImpactDrilldownPage /> : <Navigate to={allowedFallbackPath} replace />}</ProtectedRoute>} />
               </Routes>

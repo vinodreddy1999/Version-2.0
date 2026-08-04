@@ -67,8 +67,8 @@ export function EnterpriseAccessProvider({ runtimeUser, children }: { runtimeUse
   useEffect(() => {
     if (!enterprises.length) return;
     if (activeEnterpriseId && enterprises.some((enterprise) => enterprise.id === activeEnterpriseId)) return;
-    setActiveEnterpriseId(runtimeUser.role === 'super_admin' ? null : enterprises[0].id);
-  }, [activeEnterpriseId, enterprises, runtimeUser.role]);
+    setActiveEnterpriseId(null);
+  }, [activeEnterpriseId, enterprises]);
 
   const effectiveAccessQuery = useQuery({
     queryKey: enterpriseQueryKeys.effectiveAccess(runtimeUser.id, activeEnterpriseId),
@@ -104,6 +104,15 @@ export function EnterpriseAccessProvider({ runtimeUser, children }: { runtimeUse
   );
 
   useEffect(() => {
+    if (
+      activeEnterpriseId
+      && (effectiveAccessQuery.isError || availableScopesQuery.isError || navigationQuery.isError)
+    ) {
+      setActiveEnterpriseId(null);
+      setActiveScopeState(null);
+      setCompareScopeIds([]);
+      return;
+    }
     if (!activeEnterprise) {
       setActiveScopeState(null);
       return;
@@ -132,7 +141,17 @@ export function EnterpriseAccessProvider({ runtimeUser, children }: { runtimeUse
             label: firstAllowedScope.name,
           },
     );
-  }, [activeEnterprise, activeScopeState, availableScopes, canUseEnterpriseRoot, effectiveAssignments]);
+  }, [
+    activeEnterprise,
+    activeEnterpriseId,
+    activeScopeState,
+    availableScopes,
+    availableScopesQuery.isError,
+    canUseEnterpriseRoot,
+    effectiveAccessQuery.isError,
+    effectiveAssignments,
+    navigationQuery.isError,
+  ]);
 
   useEffect(() => {
     localStorage.setItem(
