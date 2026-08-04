@@ -202,6 +202,11 @@ def require_any(*roles: str):
     return dependency
 
 
+def require_mutable_session(user: User) -> None:
+    if bool(getattr(user, "_demo_read_only", False)):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Read-only demo sessions cannot modify data.")
+
+
 def audit(db: Session, actor: User, action: str, entity_type: str, entity_id: str, old_value: dict[str, Any] | None, new_value: dict[str, Any] | None) -> None:
     db.add(
         AuditLog(
@@ -360,6 +365,7 @@ def reset_password(payload: ResetPasswordPayload, db: Session = Depends(get_db))
 
 @router.post("/auth/change-password", response_model=RuntimeEnvelope)
 def change_password(payload: ChangePasswordPayload, user: User = Depends(current_user), db: Session = Depends(get_db)) -> RuntimeEnvelope:
+    require_mutable_session(user)
     if not verify_password(payload.current_password, user.password_hash):
         raise HTTPException(status_code=401, detail="Current password is incorrect")
     if payload.new_password != payload.confirm_password:
@@ -398,6 +404,7 @@ def list_users(
 
 @router.post("/users", response_model=RuntimeEnvelope)
 def create_user(payload: UserCreate, actor: User = Depends(require_any("admin")), db: Session = Depends(get_db)) -> RuntimeEnvelope:
+    require_mutable_session(actor)
     existing = db.query(User).filter(User.email == payload.email, User.tenant_id == TENANT_ID).first()
     if existing:
         raise HTTPException(status_code=409, detail="Email already exists")
@@ -427,6 +434,7 @@ def create_user(payload: UserCreate, actor: User = Depends(require_any("admin"))
 
 @router.put("/users/{user_id}", response_model=RuntimeEnvelope)
 def update_user(user_id: str, payload: UserUpdate, actor: User = Depends(require_any("admin")), db: Session = Depends(get_db)) -> RuntimeEnvelope:
+    require_mutable_session(actor)
     user = db.get(User, user_id)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
@@ -453,6 +461,7 @@ def update_user(user_id: str, payload: UserUpdate, actor: User = Depends(require
 
 @router.post("/users/{user_id}/reset-password", response_model=RuntimeEnvelope)
 def admin_reset_user_password(user_id: str, payload: AdminResetPasswordPayload, actor: User = Depends(require_any("admin")), db: Session = Depends(get_db)) -> RuntimeEnvelope:
+    require_mutable_session(actor)
     user = db.get(User, user_id)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
@@ -504,6 +513,7 @@ def list_records(
 
 @router.post("/records", response_model=RuntimeEnvelope)
 def create_record(payload: ModuleRecordCreate, actor: User = Depends(current_user), db: Session = Depends(get_db)) -> RuntimeEnvelope:
+    require_mutable_session(actor)
     target_company_id = payload.company_id or actor.company_id or COMPANY_ID
     authorize_record_action(
         db,
@@ -538,6 +548,7 @@ def create_record(payload: ModuleRecordCreate, actor: User = Depends(current_use
 
 @router.put("/records/{record_id}", response_model=RuntimeEnvelope)
 def update_record(record_id: str, payload: ModuleRecordUpdate, actor: User = Depends(current_user), db: Session = Depends(get_db)) -> RuntimeEnvelope:
+    require_mutable_session(actor)
     record = db.get(ModuleRecord, record_id)
     if not record:
         raise HTTPException(status_code=404, detail="Record not found")
@@ -563,6 +574,7 @@ def update_record(record_id: str, payload: ModuleRecordUpdate, actor: User = Dep
 
 @router.delete("/records/{record_id}", response_model=RuntimeEnvelope)
 def delete_record(record_id: str, actor: User = Depends(current_user), db: Session = Depends(get_db)) -> RuntimeEnvelope:
+    require_mutable_session(actor)
     record = db.get(ModuleRecord, record_id)
     if not record:
         raise HTTPException(status_code=404, detail="Record not found")

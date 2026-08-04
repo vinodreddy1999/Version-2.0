@@ -1,3 +1,5 @@
+from uuid import uuid4
+
 from fastapi.testclient import TestClient
 
 from app.database import SessionLocal
@@ -1239,6 +1241,83 @@ def test_runtime_admin_is_company_scoped():
     records = client.get("/runtime/records", headers=headers)
     assert records.status_code == 200
     assert all(record["company_id"] == "company-c" for record in records.json()["data"])
+
+
+def test_runtime_super_admin_can_inspect_runtime_records_and_analytics():
+    headers = runtime_headers("super@metam.local", "SuperAdmin123!")
+
+    records = client.get("/runtime/records", headers=headers)
+    assert records.status_code == 200
+    assert records.json()["data"]
+
+    analytics = client.get("/runtime/analytics/summary", headers=headers)
+    assert analytics.status_code == 200
+    assert "inventory_total_quantity" in analytics.json()["data"]
+
+
+def test_runtime_admin_can_create_update_and_reset_user():
+    headers = runtime_headers("admin@metam.local", "ChangeMe123!")
+    email = f"pytest.user.{uuid4().hex[:10]}@metam.local"
+
+    weak = client.post(
+        "/runtime/users",
+        headers=headers,
+        json={"name": "Pytest Weak User", "email": email, "password": "short", "role": "user"},
+    )
+    assert weak.status_code == 422
+
+    created = client.post(
+        "/runtime/users",
+        headers=headers,
+        json={
+            "name": "Pytest Created User",
+            "email": email,
+            "password": "CreatedUser123!",
+            "role": "user",
+        },
+    )
+    assert created.status_code == 200
+    created_user = created.json()["data"]
+    assert created_user["email"] == email
+    assert created_user["company_id"] == "company-c"
+    assert created_user["force_password_change"] is True
+
+    duplicate = client.post(
+        "/runtime/users",
+        headers=headers,
+        json={
+            "name": "Pytest Duplicate User",
+            "email": email,
+            "password": "CreatedUser123!",
+            "role": "user",
+        },
+    )
+    assert duplicate.status_code == 409
+
+    updated = client.put(
+        f"/runtime/users/{created_user['id']}",
+        headers=headers,
+        json={"name": "Pytest Updated User", "role": "supervisor"},
+    )
+    assert updated.status_code == 200
+    assert updated.json()["data"]["name"] == "Pytest Updated User"
+    assert updated.json()["data"]["role"] == "supervisor"
+
+    reset = client.post(
+        f"/runtime/users/{created_user['id']}/reset-password",
+        headers=headers,
+        json={"new_password": "ResetUser123!", "confirm_password": "ResetUser123!"},
+    )
+    assert reset.status_code == 200
+    assert reset.json()["data"]["force_password_change"] is True
+
+    old_login = client.post("/runtime/auth/login", json={"email": email, "password": "CreatedUser123!"})
+    assert old_login.status_code == 401
+
+    new_login = client.post("/runtime/auth/login", json={"email": email, "password": "ResetUser123!"})
+    assert new_login.status_code == 200
+    assert new_login.json()["data"]["user"]["role"] == "supervisor"
+    assert new_login.json()["data"]["user"]["force_password_change"] is True
 
 
 def test_datahub_requires_admin_and_is_company_scoped():

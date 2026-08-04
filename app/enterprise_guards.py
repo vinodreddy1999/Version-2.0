@@ -24,6 +24,8 @@ MODULE_DOMAINS = {
     "ai_copilot": "analytics",
 }
 
+RUNTIME_DATA_OVERRIDE_ROLES = {"super_admin"}
+
 
 @dataclass
 class RecordAccessScope:
@@ -99,6 +101,24 @@ def authorize_record_action(
     record_owner_id: str | None = None,
 ) -> RecordAccessScope:
     enterprise = enterprise_for_user(db, user)
+    if user.role in RUNTIME_DATA_OVERRIDE_ROLES and not bool(getattr(user, "_demo_read_only", False)):
+        nodes = (
+            db.query(OrganizationalNode)
+            .filter(
+                OrganizationalNode.enterprise_id == enterprise.id,
+                OrganizationalNode.status == "active",
+            )
+            .all()
+        )
+        return RecordAccessScope(
+            enterprise_id=enterprise.id,
+            company_ids={
+                row.source_entity_id
+                for row in nodes
+                if row.node_type == "legal_entity" and row.source_entity_id
+            },
+        )
+
     scope_type = "plant" if plant_id else "legal_entity" if company_id else "enterprise"
     scope_id = plant_id or company_id or enterprise.id
     domain = MODULE_DOMAINS.get(module_key, module_key.replace("-", "_"))
