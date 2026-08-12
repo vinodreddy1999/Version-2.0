@@ -1,3 +1,4 @@
+import os
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
@@ -7,7 +8,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
-from jose import JWTError, jwt
+import jwt
+from jwt import PyJWTError as JWTError
 
 from .auth_router import router as auth_router
 from .core_router import create_module_router, router as core_router
@@ -41,7 +43,7 @@ from .modules.supplier_portal import ai_router as supplier_portal_ai_router
 from .modules.supplier_portal import router as supplier_portal_router
 from .platform_seed import seed_platform
 from .platform_models import AppMetadata, FeatureFlag, ModuleRecord, User
-from .runtime_router import ensure_runtime_schema, router as runtime_router
+from .runtime_router import current_user, ensure_runtime_schema, router as runtime_router
 from .security import JWT_ALGORITHM as RUNTIME_JWT_ALGORITHM
 from .security import JWT_SECRET as RUNTIME_JWT_SECRET
 from .schemas import (
@@ -55,7 +57,7 @@ from .schemas import (
 )
 from .store import MODULES, store
 
-JWT_SECRET = "local-python-demo-secret"
+JWT_SECRET = os.getenv("LEGACY_JWT_SECRET") or RUNTIME_JWT_SECRET
 JWT_ALGORITHM = "HS256"
 
 app = FastAPI(
@@ -113,37 +115,39 @@ app.include_router(enterprise_router)
 app.include_router(enterprise_access_router)
 app.include_router(enterprise_access_router, prefix="/api/v1")
 app.include_router(core_router)
-app.include_router(costing_router)
-app.include_router(costing_ai_router)
+protected_router_dependencies = [Depends(current_user)]
+
+app.include_router(costing_router, dependencies=protected_router_dependencies)
+app.include_router(costing_ai_router, dependencies=protected_router_dependencies)
 app.include_router(customer_portal_router)
-app.include_router(customer_portal_ai_router)
-app.include_router(integrations_router)
-app.include_router(integrations_ai_router)
-app.include_router(inventory_router)
-app.include_router(frontend_router)
-app.include_router(admin_router)
-app.include_router(platform_management_router)
-app.include_router(data_hub_router)
-app.include_router(factorypulse_router)
-app.include_router(planning_router)
-app.include_router(ai_command_router)
-app.include_router(digital_twin_router)
-app.include_router(digital_ops_router)
-app.include_router(manufacturing_intelligence_router)
-app.include_router(production_router)
-app.include_router(maintenance_router)
-app.include_router(maintenance_alias_router)
-app.include_router(maintenance_ai_router)
+app.include_router(customer_portal_ai_router, dependencies=protected_router_dependencies)
+app.include_router(integrations_router, dependencies=protected_router_dependencies)
+app.include_router(integrations_ai_router, dependencies=protected_router_dependencies)
+app.include_router(inventory_router, dependencies=protected_router_dependencies)
+app.include_router(frontend_router, dependencies=protected_router_dependencies)
+app.include_router(admin_router, dependencies=protected_router_dependencies)
+app.include_router(platform_management_router, dependencies=protected_router_dependencies)
+app.include_router(data_hub_router, dependencies=protected_router_dependencies)
+app.include_router(factorypulse_router, dependencies=protected_router_dependencies)
+app.include_router(planning_router, dependencies=protected_router_dependencies)
+app.include_router(ai_command_router, dependencies=protected_router_dependencies)
+app.include_router(digital_twin_router, dependencies=protected_router_dependencies)
+app.include_router(digital_ops_router, dependencies=protected_router_dependencies)
+app.include_router(manufacturing_intelligence_router, dependencies=protected_router_dependencies)
+app.include_router(production_router, dependencies=protected_router_dependencies)
+app.include_router(maintenance_router, dependencies=protected_router_dependencies)
+app.include_router(maintenance_alias_router, dependencies=protected_router_dependencies)
+app.include_router(maintenance_ai_router, dependencies=protected_router_dependencies)
 app.include_router(mobile_router)
-app.include_router(mobile_ai_router)
-app.include_router(quality_router)
-app.include_router(quality_ai_router)
-app.include_router(reporting_router)
-app.include_router(reporting_ai_router)
-app.include_router(sales_router)
-app.include_router(sales_ai_router)
+app.include_router(mobile_ai_router, dependencies=protected_router_dependencies)
+app.include_router(quality_router, dependencies=protected_router_dependencies)
+app.include_router(quality_ai_router, dependencies=protected_router_dependencies)
+app.include_router(reporting_router, dependencies=protected_router_dependencies)
+app.include_router(reporting_ai_router, dependencies=protected_router_dependencies)
+app.include_router(sales_router, dependencies=protected_router_dependencies)
+app.include_router(sales_ai_router, dependencies=protected_router_dependencies)
 app.include_router(supplier_portal_router)
-app.include_router(supplier_portal_ai_router)
+app.include_router(supplier_portal_ai_router, dependencies=protected_router_dependencies)
 app.include_router(create_module_router("warehouse", "/warehouses"))
 app.include_router(create_module_router("warehouse_zones", "/warehouses/{warehouse_id}/zones"))
 app.include_router(create_module_router("warehouse_map", "/warehouses/{warehouse_id}/map"))

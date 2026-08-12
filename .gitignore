@@ -17,3 +17,4 @@ frontend/dist/
 frontend/.env
 frontend/.env.local
 frontend/npm-debug.log*
+frontend/.npm-cache/

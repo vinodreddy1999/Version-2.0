@@ -1,14 +1,16 @@
 from __future__ import annotations
 
+import os
+import secrets
 from datetime import date, datetime, timedelta, timezone
 from typing import Any
 from uuid import uuid4
 
-from jose import jwt
+import jwt
 
 from .supplier_portal_repository import SupplierPortalRepository, supplier_portal_repo
 
-SUPPLIER_PORTAL_JWT_SECRET = "local-supplier-portal-secret"
+SUPPLIER_PORTAL_JWT_SECRET = os.getenv("SUPPLIER_PORTAL_JWT_SECRET") or secrets.token_urlsafe(48)
 SUPPLIER_PORTAL_JWT_ALGORITHM = "HS256"
 
 

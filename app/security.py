@@ -1,13 +1,14 @@
+import os
 import secrets
 import string
 from datetime import datetime, timedelta, timezone
 from uuid import uuid4
 
-from jose import jwt
+import jwt
 from passlib.context import CryptContext
 
 
-JWT_SECRET = "local-development-secret"
+JWT_SECRET = os.getenv("JWT_SECRET") or os.getenv("METAM_JWT_SECRET") or secrets.token_urlsafe(48)
 JWT_ALGORITHM = "HS256"
 pwd_context = CryptContext(schemes=["pbkdf2_sha256"], deprecated="auto")
 

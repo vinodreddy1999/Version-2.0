@@ -1,14 +1,16 @@
 from __future__ import annotations
 
+import os
+import secrets
 from datetime import datetime, timezone, timedelta
 from typing import Any
 from uuid import uuid4
 
-from jose import jwt
+import jwt
 
 from .mobile_repository import MobileRepository, mobile_repo
 
-MOBILE_JWT_SECRET = "local-mobile-secret"
+MOBILE_JWT_SECRET = os.getenv("MOBILE_JWT_SECRET") or secrets.token_urlsafe(48)
 MOBILE_JWT_ALGORITHM = "HS256"
 
 

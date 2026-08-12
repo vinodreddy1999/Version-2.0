@@ -5,7 +5,8 @@ from typing import Any
 from uuid import uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
-from jose import JWTError, jwt
+import jwt
+from jwt import PyJWTError as JWTError
 from sqlalchemy import func, inspect, text
 from sqlalchemy.orm import Session
 
@@ -105,18 +106,20 @@ def ensure_runtime_schema() -> None:
         if "role" not in user_columns:
             with engine.begin() as connection:
                 connection.execute(text("ALTER TABLE users ADD COLUMN role VARCHAR(40) DEFAULT 'user'"))
-        missing_columns = {
-            "password_history": "JSON DEFAULT '[]'",
-            "password_changed_at": "TIMESTAMP DEFAULT CURRENT_TIMESTAMP",
-            "password_expires_at": "TIMESTAMP",
-            "reset_token_hash": "VARCHAR(300)",
-            "reset_token_expires_at": "TIMESTAMP",
-            "force_password_change": "BOOLEAN DEFAULT FALSE",
-        }
         with engine.begin() as connection:
-            for column, ddl in missing_columns.items():
+            schema_updates = {
+                "password_history": ("JSON DEFAULT '[]'", None),
+                "password_changed_at": ("TIMESTAMP", "UPDATE users SET password_changed_at = CURRENT_TIMESTAMP WHERE password_changed_at IS NULL"),
+                "password_expires_at": ("TIMESTAMP", None),
+                "reset_token_hash": ("VARCHAR(300)", None),
+                "reset_token_expires_at": ("TIMESTAMP", None),
+                "force_password_change": ("BOOLEAN DEFAULT FALSE", None),
+            }
+            for column, (ddl, backfill_sql) in schema_updates.items():
                 if column not in user_columns:
                     connection.execute(text(f"ALTER TABLE users ADD COLUMN {column} {ddl}"))
+                    if backfill_sql:
+                        connection.execute(text(backfill_sql))
 
 
 def runtime_result(action: str, message: str, data: Any) -> RuntimeEnvelope:
