@@ -7,6 +7,7 @@ import { ErrorState } from '../components/ErrorState';
 import { LoadingState } from '../components/LoadingState';
 import { Panel } from '../components/Panel';
 import { StatusBadge } from '../components/StatusBadge';
+import { useClickOutside } from '../hooks/useClickOutside';
 import { canManagePlatform, canPerformAction, canUseDataHubUploads } from '../lib/rbac';
 import { usePlatform } from '../platform/PlatformContext';
 import type { PlatformClient } from '../platform/types';
@@ -309,9 +310,10 @@ function CompanySearchSelect({
   const normalizedSearch = search.trim().toLowerCase();
   const filteredCompanies = companies.filter((company) =>
     !normalizedSearch || `${company.name} ${company.code}`.toLowerCase().includes(normalizedSearch));
+  const containerRef = useClickOutside<HTMLDivElement>(open, () => setOpen(false));
 
   return (
-    <div className="relative mt-3">
+    <div ref={containerRef} className="relative mt-3">
       <button
         type="button"
         className={`${selectClass} flex w-full items-center justify-between gap-3 text-left`}
@@ -412,9 +414,10 @@ function PlantSearchSelect({
   const normalizedSearch = search.trim().toLowerCase();
   const filteredPlants = plants.filter((plant) =>
     !normalizedSearch || `${plant.plantName} ${plant.plantId} ${plant.status}`.toLowerCase().includes(normalizedSearch));
+  const containerRef = useClickOutside<HTMLDivElement>(open, () => setOpen(false));
 
   return (
-    <div className="relative mt-3">
+    <div ref={containerRef} className="relative mt-3">
       <button
         type="button"
         className={`${selectClass} flex w-full items-center justify-between gap-3 text-left`}
@@ -547,6 +550,10 @@ function PowerBiGetDataExperience({
   const [sourceMenuOpen, setSourceMenuOpen] = useState(false);
   const [sourceMenuExpanded, setSourceMenuExpanded] = useState(false);
   const [connectorDialogOpen, setConnectorDialogOpen] = useState(false);
+  const sourceMenuRef = useClickOutside<HTMLDivElement>(sourceMenuOpen, () => {
+    setSourceMenuOpen(false);
+    setSourceMenuExpanded(false);
+  });
   const visibleDestinations = destinationModules.filter((module) => !moduleFilter || module === moduleFilter);
   const liveConnectorGroups = backendCatalog?.groups ?? [];
   const liveConnectorCount = liveConnectorGroups.reduce((total, group) => total + group.connectors.length, 0);
@@ -595,7 +602,7 @@ function PowerBiGetDataExperience({
               </button>
             ))}
           </div>
-          <div className="relative flex flex-wrap gap-2 border-b border-white/10 bg-white/[0.04] p-3">
+          <div ref={sourceMenuRef} className="relative flex flex-wrap gap-2 border-b border-white/10 bg-white/[0.04] p-3">
             <button
               type="button"
               className={`min-w-[92px] rounded-2xl border px-3 py-3 text-center text-sm transition ${sourceMenuOpen ? 'border-cyan-300/35 bg-cyan-400/14 text-white' : 'border-white/10 bg-white/[0.04] text-slate-200 hover:bg-white/8'}`}

@@ -22,6 +22,7 @@ import {
 import { LazyChunkBoundary } from '../components/LazyChunkBoundary';
 import { Breadcrumbs } from '../components/Breadcrumbs';
 import { LoadingState } from '../components/LoadingState';
+import { useClickOutside } from '../hooks/useClickOutside';
 import { canAccessModule, canAccessPage, canAccessSection, firstAllowedPath } from '../lib/rbac';
 import { apiConfig, backend } from '../services/api';
 import type { RuntimeUser } from '../types';
@@ -167,9 +168,10 @@ function ClientContextSelector({
   const filteredClients = availableClients.filter((client) =>
     !normalizedSearch || `${client.clientName} ${client.clientId} ${client.market} ${client.region}`.toLowerCase().includes(normalizedSearch));
   const selectedClient = clients.find((client) => client.clientId === selectedClientId);
+  const containerRef = useClickOutside<HTMLDivElement>(open, () => setOpen(false));
 
   return (
-    <div className="relative w-[min(260px,72vw)]">
+    <div ref={containerRef} className="relative w-[min(260px,72vw)]">
       <button
         type="button"
         className="form-input flex w-full items-center justify-between gap-3 py-1.5 text-left text-sm"
