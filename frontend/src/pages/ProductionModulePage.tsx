@@ -210,7 +210,7 @@ function ProductionDataTable({ rows }: { rows: TableRow[] }) {
         </thead>
         <tbody>
           {rows.map((row, index) => (
-            <tr key={String(Object.values(row)[0] ?? index)} className="border-b border-white/10 hover:bg-white/[0.04]">
+            <tr key={`${index}:${String(Object.values(row)[0] ?? '')}`} className="border-b border-white/10 hover:bg-white/[0.04]">
               {headers.map((header) => <td key={header} className="px-3 py-3 text-slate-300">{header === 'Status' && typeof row[header] === 'string' ? <StatusBadge status={String(row[header])} /> : row[header]}</td>)}
             </tr>
           ))}

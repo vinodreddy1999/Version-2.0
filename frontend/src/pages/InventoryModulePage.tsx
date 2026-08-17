@@ -188,7 +188,7 @@ function InventoryDataTable({ rows }: { rows: TableRow[] }) {
     <ScrollableTableFrame count={rows.length}>
       <table className="min-w-[1100px] w-full text-sm">
         <thead><tr className="border-b border-white/10 text-left text-xs uppercase tracking-[0.08em] text-slate-500">{headers.map((header) => <th key={header} className="px-3 py-3">{header}</th>)}</tr></thead>
-        <tbody>{rows.map((row, index) => <tr key={String(Object.values(row)[0] ?? index)} className="border-b border-white/10 hover:bg-white/[0.04]">{headers.map((header) => <td key={header} className="px-3 py-3 text-slate-300">{header === 'Status' && typeof row[header] === 'string' ? <StatusBadge status={String(row[header])} /> : row[header]}</td>)}</tr>)}</tbody>
+        <tbody>{rows.map((row, index) => <tr key={`${index}:${String(Object.values(row)[0] ?? '')}`} className="border-b border-white/10 hover:bg-white/[0.04]">{headers.map((header) => <td key={header} className="px-3 py-3 text-slate-300">{header === 'Status' && typeof row[header] === 'string' ? <StatusBadge status={String(row[header])} /> : row[header]}</td>)}</tr>)}</tbody>
       </table>
     </ScrollableTableFrame>
   );
