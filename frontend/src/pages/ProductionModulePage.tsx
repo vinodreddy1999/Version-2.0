@@ -9,6 +9,7 @@ import { RowActions } from '../components/RowActions';
 import { ScrollableTableFrame } from '../components/ScrollableTableFrame';
 import { StatCard } from '../components/StatCard';
 import { StatusBadge } from '../components/StatusBadge';
+import { clientVarianceFactor, scalePercent, scaleQty } from '../lib/clientVariance';
 import { formatCurrency } from '../lib/format';
 import { usePlatform } from '../platform/PlatformContext';
 import {
@@ -93,15 +94,17 @@ function ProductionSectionContent({ section }: { section: ProductionSection }) {
 }
 
 function ProductionDashboard() {
-  const planned = productionOrders.reduce((sum, item) => sum + item.plannedQty, 0);
-  const actual = productionOrders.reduce((sum, item) => sum + item.producedQty, 0);
-  const downtime = downtimeRecords.reduce((sum, item) => sum + item.duration, 0);
-  const oee = Math.round(oeeRecords[0].oee);
-  const avgMachineUtilization = Math.round(machineRecords.reduce((sum, item) => sum + item.availability, 0) / machineRecords.length);
-  const avgLineUtilization = Math.round(lineRecords.reduce((sum, item) => sum + item.utilization, 0) / lineRecords.length);
-  const avgYield = Math.round(yieldRecords.reduce((sum, item) => sum + item.yield, 0) / yieldRecords.length);
-  const totalScrapQty = scrapRecords.reduce((sum, item) => sum + item.scrapQty, 0);
+  const { selectedClientId } = usePlatform();
+  const planned = scaleQty(productionOrders.reduce((sum, item) => sum + item.plannedQty, 0), selectedClientId);
+  const actual = scaleQty(productionOrders.reduce((sum, item) => sum + item.producedQty, 0), selectedClientId);
+  const downtime = downtimeRecords.reduce((sum, item) => sum + item.duration, 0) * clientVarianceFactor(selectedClientId);
+  const oee = scalePercent(Math.round(oeeRecords[0].oee), selectedClientId);
+  const avgMachineUtilization = scalePercent(Math.round(machineRecords.reduce((sum, item) => sum + item.availability, 0) / machineRecords.length), selectedClientId);
+  const avgLineUtilization = scalePercent(Math.round(lineRecords.reduce((sum, item) => sum + item.utilization, 0) / lineRecords.length), selectedClientId);
+  const avgYield = scalePercent(Math.round(yieldRecords.reduce((sum, item) => sum + item.yield, 0) / yieldRecords.length), selectedClientId);
+  const totalScrapQty = scaleQty(scrapRecords.reduce((sum, item) => sum + item.scrapQty, 0), selectedClientId);
   const achievement = Math.round((actual / planned) * 100);
+  const healthScore = scalePercent(86, selectedClientId);
 
   return (
     <div className="space-y-5">
@@ -115,7 +118,7 @@ function ProductionDashboard() {
         <StatCard label="Downtime Hours" value={downtime.toFixed(1)} helper="Logged production loss" accent="amber" />
         <StatCard label="Yield" value={`${avgYield}%`} helper="Output vs input" accent="emerald" />
         <StatCard label="Scrap Qty" value={totalScrapQty.toLocaleString()} helper="Waste units" accent="amber" />
-        <StatCard label="Production Health Score" value="86%" helper="Risk adjusted score" accent="emerald" />
+        <StatCard label="Production Health Score" value={`${healthScore}%`} helper="Risk adjusted score" accent="emerald" />
       </div>
       <ProductionFilters />
       <div className="grid gap-5 xl:grid-cols-2">
@@ -131,15 +134,16 @@ function ProductionDashboard() {
 }
 
 function DowntimePanel() {
-  const total = downtimeRecords.reduce((sum, item) => sum + item.duration, 0);
+  const { selectedClientId, currency } = usePlatform();
+  const total = downtimeRecords.reduce((sum, item) => sum + item.duration, 0) * clientVarianceFactor(selectedClientId);
   const open = downtimeRecords.filter((item) => item.status === 'Open').length;
-  const cost = Math.round(total * 18500);
+  const cost = scaleQty(Math.round(total * 18500), selectedClientId);
   return (
     <div className="space-y-5">
       <div className="grid gap-4 md:grid-cols-3">
         <StatCard label="Total Downtime" value={`${total.toFixed(1)} hrs`} helper="Across machines" accent="amber" />
         <StatCard label="Open Downtime" value={open} helper="Needs action" accent="amber" />
-        <StatCard label="Downtime Cost" value={formatCurrency(cost, productionCompany.currency)} helper="Estimated cost" accent="violet" />
+        <StatCard label="Downtime Cost" value={formatCurrency(cost, currency)} helper="Estimated cost" accent="violet" />
       </div>
       <Panel title="Downtime Management" description="Track production losses by machine, cause, duration, root cause, and status.">
         <ProductionBarChart data={downtimeByCause()} bars={['hours']} />
@@ -150,13 +154,18 @@ function DowntimePanel() {
 }
 
 function OeePanel() {
+  const { selectedClientId } = usePlatform();
+  const oee = scalePercent(oeeRecords[0].oee, selectedClientId);
+  const availability = scalePercent(oeeRecords[0].availability, selectedClientId);
+  const performance = scalePercent(oeeRecords[0].performance, selectedClientId);
+  const quality = scalePercent(oeeRecords[0].quality, selectedClientId);
   return (
     <div className="space-y-5">
       <div className="grid gap-4 md:grid-cols-4">
-        <StatCard label="OEE" value={`${oeeRecords[0].oee}%`} helper="Plant OEE" accent="emerald" />
-        <StatCard label="Availability" value={`${oeeRecords[0].availability}%`} helper="Machine availability" accent="blue" />
-        <StatCard label="Performance" value={`${oeeRecords[0].performance}%`} helper="Run speed" accent="blue" />
-        <StatCard label="Quality" value={`${oeeRecords[0].quality}%`} helper="Good output" accent="emerald" />
+        <StatCard label="OEE" value={`${oee}%`} helper="Plant OEE" accent="emerald" />
+        <StatCard label="Availability" value={`${availability}%`} helper="Machine availability" accent="blue" />
+        <StatCard label="Performance" value={`${performance}%`} helper="Run speed" accent="blue" />
+        <StatCard label="Quality" value={`${quality}%`} helper="Good output" accent="emerald" />
       </div>
       <Panel title="OEE Dashboard" description="OEE equals availability multiplied by performance multiplied by quality.">
         <ProductionBarChart data={oeeRecords.map((item) => ({ name: item.name, availability: item.availability, performance: item.performance, quality: item.quality, oee: item.oee }))} bars={['availability', 'performance', 'quality', 'oee']} />
@@ -221,6 +230,7 @@ function ProductionDataTable({ rows }: { rows: TableRow[] }) {
 }
 
 function ReportsPanel() {
+  const { selectedClient } = usePlatform();
   return (
     <div className="space-y-5">
       <ProductionFilters />
@@ -229,7 +239,7 @@ function ReportsPanel() {
           {productionReports.map((report) => (
             <div key={report} className="rounded-xl border border-white/10 bg-slate-950/30 p-4">
               <p className="font-medium text-white">{report}</p>
-              <p className="mt-2 text-sm text-slate-400">Company-scoped report for ABC Manufacturing.</p>
+              <p className="mt-2 text-sm text-slate-400">Company-scoped report for {selectedClient?.clientName ?? 'the selected company'}.</p>
               <div className="mt-4 flex flex-wrap gap-2">
                 {['Preview', 'PDF', 'Excel', 'CSV'].map((item) => <button key={item} className="form-button-subtle py-1 text-xs">{item}</button>)}
               </div>

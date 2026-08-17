@@ -11,6 +11,7 @@ import { RowActions } from '../components/RowActions';
 import { ScrollableTableFrame } from '../components/ScrollableTableFrame';
 import { StatCard } from '../components/StatCard';
 import { StatusBadge } from '../components/StatusBadge';
+import { clientVarianceFactor, scalePercent, scaleQty } from '../lib/clientVariance';
 import { formatCurrency } from '../lib/format';
 import { applyModuleFilters, type ModuleFilterValues } from '../lib/moduleFilters';
 import {
@@ -104,6 +105,7 @@ function InventorySectionContent({ section }: { section: InventorySection }) {
 }
 
 function InventoryDashboard() {
+  const { selectedClientId, currency } = usePlatform();
   const [filters, setFilters] = useState<ModuleFilterValues>({});
   const filteredItems = useMemo(
     () => applyModuleFilters(inventoryItems, filters, { Plant: 'plant', Warehouse: 'warehouse', Product: 'name', Category: 'category' }),
@@ -121,29 +123,32 @@ function InventoryDashboard() {
     () => reorderRules.filter((item) => !filters.Product || item.item === filters.Product),
     [filters],
   );
-  const totalValue = filteredItems.reduce((sum, item) => sum + item.value, 0);
-  const available = filteredItems.reduce((sum, item) => sum + item.availableQty, 0);
-  const reserved = filteredItems.reduce((sum, item) => sum + item.reservedQty, 0);
-  const deadValue = filteredDeadStock.reduce((sum, item) => sum + item.value, 0);
-  const slowValue = filteredSlowMoving.reduce((sum, item) => sum + item.inventoryValue, 0);
+  const totalValue = scaleQty(filteredItems.reduce((sum, item) => sum + item.value, 0), selectedClientId);
+  const available = scaleQty(filteredItems.reduce((sum, item) => sum + item.availableQty, 0), selectedClientId);
+  const reserved = scaleQty(filteredItems.reduce((sum, item) => sum + item.reservedQty, 0), selectedClientId);
+  const deadValue = scaleQty(filteredDeadStock.reduce((sum, item) => sum + item.value, 0), selectedClientId);
+  const slowValue = scaleQty(filteredSlowMoving.reduce((sum, item) => sum + item.inventoryValue, 0), selectedClientId);
   const stockoutRisk = filteredReorderRules.filter((item) => ['Critical', 'Stockout'].includes(item.status)).length;
   const coverageDays = filteredItems.length
     ? Math.round(filteredItems.reduce((sum, item) => sum + item.coverageDays, 0) / filteredItems.length)
     : 0;
+  const inventoryAccuracy = scalePercent(98.1, selectedClientId);
+  const inventoryTurns = (8.4 * clientVarianceFactor(selectedClientId)).toFixed(1);
+  const healthScore = scalePercent(91, selectedClientId);
 
   return (
     <div className="space-y-5">
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
-        <StatCard label="Total Inventory Value" value={formatCurrency(totalValue, inventoryCompany.currency)} helper="Filtered inventory value" accent="blue" />
+        <StatCard label="Total Inventory Value" value={formatCurrency(totalValue, currency)} helper="Filtered inventory value" accent="blue" />
         <StatCard label="Available Inventory" value={available.toLocaleString()} helper="Qty available" accent="emerald" />
         <StatCard label="Reserved Inventory" value={reserved.toLocaleString()} helper="Committed to demand" accent="amber" />
-        <StatCard label="Inventory Accuracy" value="98.1%" helper="Cycle count weighted" accent="emerald" />
+        <StatCard label="Inventory Accuracy" value={`${inventoryAccuracy}%`} helper="Cycle count weighted" accent="emerald" />
         <StatCard label="Coverage Days" value={coverageDays || '0'} helper="Filtered weighted coverage" accent="violet" />
-        <StatCard label="Inventory Turns" value="8.4" helper="Annualized" accent="blue" />
-        <StatCard label="Dead Stock Value" value={formatCurrency(deadValue, inventoryCompany.currency)} helper="No movement 180+ days" accent="amber" />
-        <StatCard label="Slow Moving Value" value={formatCurrency(slowValue, inventoryCompany.currency)} helper="Low movement stock" accent="amber" />
+        <StatCard label="Inventory Turns" value={inventoryTurns} helper="Annualized" accent="blue" />
+        <StatCard label="Dead Stock Value" value={formatCurrency(deadValue, currency)} helper="No movement 180+ days" accent="amber" />
+        <StatCard label="Slow Moving Value" value={formatCurrency(slowValue, currency)} helper="Low movement stock" accent="amber" />
         <StatCard label="Stockout Risk" value={stockoutRisk} helper="Critical reorder items" accent="amber" />
-        <StatCard label="Inventory Health Score" value="91%" helper="Risk adjusted" accent="emerald" />
+        <StatCard label="Inventory Health Score" value={`${healthScore}%`} helper="Risk adjusted" accent="emerald" />
       </div>
       <InventoryFilters filters={filters} onChange={setFilters} />
       <div className="grid gap-5 xl:grid-cols-2">
@@ -204,6 +209,7 @@ function PhysicalInventory() {
 }
 
 function ReportsPanel() {
+  const { selectedClient } = usePlatform();
   const [filters, setFilters] = useState<ModuleFilterValues>({});
   return (
     <div className="space-y-5">
@@ -213,7 +219,7 @@ function ReportsPanel() {
           {inventoryReports.map((report) => (
             <div key={report} className="rounded-xl border border-white/10 bg-slate-950/30 p-4">
               <p className="font-medium text-white">{report}</p>
-              <p className="mt-2 text-sm text-slate-400">Company-scoped report for ABC Manufacturing.</p>
+              <p className="mt-2 text-sm text-slate-400">Company-scoped report for {selectedClient?.clientName ?? 'the selected company'}.</p>
               <ReportExportButtons reportName={report} />
             </div>
           ))}

@@ -11,6 +11,7 @@ import { RowActions } from '../components/RowActions';
 import { ScrollableTableFrame } from '../components/ScrollableTableFrame';
 import { StatCard } from '../components/StatCard';
 import { StatusBadge } from '../components/StatusBadge';
+import { scalePercent, scaleQty } from '../lib/clientVariance';
 import { applyModuleFilters, type ModuleFilterValues } from '../lib/moduleFilters';
 import { getUserDataScope, scopeFilterDefaults, scopeOptions } from '../lib/rbac';
 import { usePlatform } from '../platform/PlatformContext';
@@ -106,8 +107,9 @@ export function PlanningModulePage({ user }: { user: RuntimeUser }) {
 }
 
 function PlanningSectionContent({ section, user }: { section: PlanningSection; user: RuntimeUser }) {
+  const { selectedClient } = usePlatform();
   if (section === 'dashboard') return <PlanningDashboard />;
-  if (section === 'demand') return <PlanRegister title="Demand Planning" description="Manage demand plans for ABC Manufacturing only." rows={demandRows()} searchKeys={['Demand Plan ID', 'Product', 'Customer', 'Owner']} action="Create Demand Plan" />;
+  if (section === 'demand') return <PlanRegister title="Demand Planning" description={`Manage demand plans for ${selectedClient?.clientName ?? 'the selected company'} only.`} rows={demandRows()} searchKeys={['Demand Plan ID', 'Product', 'Customer', 'Owner']} action="Create Demand Plan" />;
   if (section === 'inventory') return <PlanRegister title="Inventory Planning" description="Target inventory, safety stock, reorder points, shortage risk, and excess inventory risk." rows={inventoryRows()} searchKeys={['Inventory Plan ID', 'Product', 'Plant', 'Warehouse', 'Owner']} action="Create Inventory Plan" extra={<InventoryWidgets />} />;
   if (section === 'production') return <PlanRegister title="Production Planning" description="Convert demand and inventory gaps into executable production plans." rows={productionRows()} searchKeys={['Production Plan ID', 'Product', 'Plant', 'Line', 'Owner']} action="Create Production Plan" extra={<ProductionWidgets />} />;
   if (section === 'capacity') return <PlanRegister title="Capacity Planning" description="Check whether plants, lines, machines, shifts, and labor can support the production plan." rows={capacityRows()} searchKeys={['Capacity Plan ID', 'Plant', 'Line', 'Work Center', 'Owner']} action="Create Capacity Plan" extra={<CapacityWidgets />} />;
@@ -145,7 +147,7 @@ const materialFilterFieldMap = {
 
 function PlanningDashboard() {
   const navigate = useNavigate();
-  const { platformUser } = usePlatform();
+  const { platformUser, selectedClientId } = usePlatform();
   const [filters, setFilters] = useState<ModuleFilterValues>(() => scopeFilterDefaults(userFromPlatform(platformUser), platformUser));
   const filteredDemand = useMemo(
     () => applyModuleFilters(demandPlans, filters, { Product: 'product', Category: planningFilterFieldMap.Category, Planner: 'owner', Status: 'status' }),
@@ -169,14 +171,16 @@ function PlanningDashboard() {
   );
   const shortageCount = filteredMaterials.filter((item) => item.shortageQty > 0).length;
   const openRisks = [...filteredMaterials, ...filteredCapacity, ...workforcePlans, ...maintenancePlans].filter((item) => ['Critical', 'Warning', 'Review'].includes(item.status)).length;
-  const totalDemand = filteredDemand.reduce((sum, item) => sum + item.forecastQty, 0);
-  const plannedProduction = filteredProduction.reduce((sum, item) => sum + item.plannedProduction, 0);
+  const totalDemand = scaleQty(filteredDemand.reduce((sum, item) => sum + item.forecastQty, 0), selectedClientId);
+  const plannedProduction = scaleQty(filteredProduction.reduce((sum, item) => sum + item.plannedProduction, 0), selectedClientId);
   const coverageDays = filteredInventory.length
     ? Math.round(filteredInventory.reduce((sum, item) => sum + item.coverageDays, 0) / filteredInventory.length)
     : 0;
   const capacityUtilization = filteredCapacity.length
-    ? Math.round(filteredCapacity.reduce((sum, item) => sum + item.utilization, 0) / filteredCapacity.length)
+    ? scalePercent(Math.round(filteredCapacity.reduce((sum, item) => sum + item.utilization, 0) / filteredCapacity.length), selectedClientId)
     : 0;
+  const workforceUtilization = scalePercent(91, selectedClientId);
+  const planningAccuracy = scalePercent(91, selectedClientId ? `${selectedClientId}:accuracy` : selectedClientId);
   return (
     <div className="space-y-5">
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
@@ -185,9 +189,9 @@ function PlanningDashboard() {
         <StatCard label="Material Shortages" value={shortageCount} helper="Shortage rows requiring action" accent="amber" onClick={() => navigate('/planning/materials')} />
         <StatCard label="Inventory Coverage" value={`${coverageDays} days`} helper="Filtered weighted coverage" accent="violet" onClick={() => navigate('/planning/inventory')} />
         <StatCard label="Capacity Utilization" value={`${capacityUtilization}%`} helper="Across work centers" accent="amber" onClick={() => navigate('/planning/capacity')} />
-        <StatCard label="Workforce Utilization" value="91%" helper="Shift labor utilization" accent="blue" onClick={() => navigate('/planning/workforce')} />
+        <StatCard label="Workforce Utilization" value={`${workforceUtilization}%`} helper="Shift labor utilization" accent="blue" onClick={() => navigate('/planning/workforce')} />
         <StatCard label="Open Planning Risks" value={openRisks} helper="Capacity, material, labor, maintenance" accent="amber" />
-        <StatCard label="Planning Accuracy" value="91%" helper="Forecast versus actual orders" accent="emerald" />
+        <StatCard label="Planning Accuracy" value={`${planningAccuracy}%`} helper="Forecast versus actual orders" accent="emerald" />
       </div>
       <PlanningFilterSidebar filters={filters} onChange={setFilters} />
       <div className="grid gap-5 xl:grid-cols-2">

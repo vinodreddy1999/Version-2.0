@@ -9,6 +9,7 @@ import { RowActions } from '../components/RowActions';
 import { ScrollableTableFrame } from '../components/ScrollableTableFrame';
 import { StatCard } from '../components/StatCard';
 import { StatusBadge } from '../components/StatusBadge';
+import { clientVarianceFactor, scalePercent, scaleQty } from '../lib/clientVariance';
 import { formatCurrency } from '../lib/format';
 import {
   assetHealthRecords,
@@ -91,17 +92,19 @@ function MaintenanceSectionContent({ section }: { section: MaintenanceSection })
 }
 
 function MaintenanceDashboard() {
-  const availability = Math.round(assetHealthRecords.reduce((sum, item) => sum + item.availability, 0) / assetHealthRecords.length);
-  const health = Math.round(assetHealthRecords.reduce((sum, item) => sum + item.healthScore, 0) / assetHealthRecords.length);
+  const { selectedClientId, currency } = usePlatform();
+  const availability = scalePercent(Math.round(assetHealthRecords.reduce((sum, item) => sum + item.availability, 0) / assetHealthRecords.length), selectedClientId);
+  const health = scalePercent(Math.round(assetHealthRecords.reduce((sum, item) => sum + item.healthScore, 0) / assetHealthRecords.length), selectedClientId);
   const openWorkOrders = workOrders.filter((item) => ['Open', 'Assigned', 'In Progress', 'On Hold', 'Overdue'].includes(item.status)).length;
   const overdueWorkOrders = workOrders.filter((item) => item.status === 'Overdue').length;
   const activeBreakdowns = breakdownRecords.filter((item) => !['Closed'].includes(item.status)).length;
-  const pmCompliance = Math.round(preventiveSchedules.reduce((sum, item) => sum + item.compliance, 0) / preventiveSchedules.length);
-  const downtime = breakdownRecords.reduce((sum, item) => sum + item.downtimeHours, 0);
-  const mttr = (assetHealthRecords.reduce((sum, item) => sum + item.mttr, 0) / assetHealthRecords.length).toFixed(1);
-  const mtbf = Math.round(assetHealthRecords.reduce((sum, item) => sum + item.mtbf, 0) / assetHealthRecords.length);
-  const totalCost = costRecords.reduce((sum, item) => sum + item.amount, 0);
+  const pmCompliance = scalePercent(Math.round(preventiveSchedules.reduce((sum, item) => sum + item.compliance, 0) / preventiveSchedules.length), selectedClientId);
+  const downtime = breakdownRecords.reduce((sum, item) => sum + item.downtimeHours, 0) * clientVarianceFactor(selectedClientId);
+  const mttr = (assetHealthRecords.reduce((sum, item) => sum + item.mttr, 0) / assetHealthRecords.length * clientVarianceFactor(selectedClientId)).toFixed(1);
+  const mtbf = scaleQty(Math.round(assetHealthRecords.reduce((sum, item) => sum + item.mtbf, 0) / assetHealthRecords.length), selectedClientId);
+  const totalCost = scaleQty(costRecords.reduce((sum, item) => sum + item.amount, 0), selectedClientId);
   const criticalRisk = assetHealthRecords.filter((item) => ['Critical', 'Down'].includes(item.riskStatus)).length;
+  const maintenanceHealthScore = scalePercent(87, selectedClientId);
 
   return (
     <div className="space-y-5">
@@ -115,9 +118,9 @@ function MaintenanceDashboard() {
         <StatCard label="Downtime Hours" value={downtime.toFixed(1)} helper="Breakdown downtime" accent="amber" />
         <StatCard label="MTTR" value={`${mttr} hrs`} helper="Mean time to repair" accent="blue" />
         <StatCard label="MTBF" value={`${mtbf} hrs`} helper="Mean time between failures" accent="blue" />
-        <StatCard label="Maintenance Cost" value={formatCurrency(totalCost, maintenanceCompany.currency)} helper="Current maintenance spend" accent="violet" />
+        <StatCard label="Maintenance Cost" value={formatCurrency(totalCost, currency)} helper="Current maintenance spend" accent="violet" />
         <StatCard label="Critical Asset Risk" value={criticalRisk} helper="Critical or down assets" accent="amber" />
-        <StatCard label="Maintenance Health Score" value="87%" helper="Reliability adjusted" accent="emerald" />
+        <StatCard label="Maintenance Health Score" value={`${maintenanceHealthScore}%`} helper="Reliability adjusted" accent="emerald" />
       </div>
       <MaintenanceFilters />
       <div className="grid gap-5 xl:grid-cols-2">
@@ -133,18 +136,22 @@ function MaintenanceDashboard() {
 }
 
 function CostPanel() {
-  const total = costRecords.reduce((sum, item) => sum + item.amount, 0);
-  const breakdown = costRecords.filter((item) => ['Downtime Cost', 'Spare Parts'].includes(item.type)).reduce((sum, item) => sum + item.amount, 0);
-  const spare = costRecords.filter((item) => item.type === 'Spare Parts').reduce((sum, item) => sum + item.amount, 0);
+  const { selectedClientId, currency } = usePlatform();
+  const total = scaleQty(costRecords.reduce((sum, item) => sum + item.amount, 0), selectedClientId);
+  const breakdown = scaleQty(costRecords.filter((item) => ['Downtime Cost', 'Spare Parts'].includes(item.type)).reduce((sum, item) => sum + item.amount, 0), selectedClientId);
+  const spare = scaleQty(costRecords.filter((item) => item.type === 'Spare Parts').reduce((sum, item) => sum + item.amount, 0), selectedClientId);
+  const preventiveCost = scaleQty(6600, selectedClientId);
+  const correctiveCost = scaleQty(34100, selectedClientId);
+  const downtimeCost = scaleQty(61200, selectedClientId);
   return (
     <div className="space-y-5">
       <div className="grid gap-4 md:grid-cols-3 xl:grid-cols-6">
-        <StatCard label="Total Maintenance Cost" value={formatCurrency(total, maintenanceCompany.currency)} helper="All cost records" accent="violet" />
-        <StatCard label="Preventive Cost" value={formatCurrency(6600, maintenanceCompany.currency)} helper="PM spend" accent="emerald" />
-        <StatCard label="Corrective Cost" value={formatCurrency(34100, maintenanceCompany.currency)} helper="Corrective repairs" accent="amber" />
-        <StatCard label="Breakdown Cost" value={formatCurrency(breakdown, maintenanceCompany.currency)} helper="Downtime and spares" accent="amber" />
-        <StatCard label="Spare Cost" value={formatCurrency(spare, maintenanceCompany.currency)} helper="Spare part usage" accent="blue" />
-        <StatCard label="Downtime Cost" value={formatCurrency(61200, maintenanceCompany.currency)} helper="Production loss estimate" accent="amber" />
+        <StatCard label="Total Maintenance Cost" value={formatCurrency(total, currency)} helper="All cost records" accent="violet" />
+        <StatCard label="Preventive Cost" value={formatCurrency(preventiveCost, currency)} helper="PM spend" accent="emerald" />
+        <StatCard label="Corrective Cost" value={formatCurrency(correctiveCost, currency)} helper="Corrective repairs" accent="amber" />
+        <StatCard label="Breakdown Cost" value={formatCurrency(breakdown, currency)} helper="Downtime and spares" accent="amber" />
+        <StatCard label="Spare Cost" value={formatCurrency(spare, currency)} helper="Spare part usage" accent="blue" />
+        <StatCard label="Downtime Cost" value={formatCurrency(downtimeCost, currency)} helper="Production loss estimate" accent="amber" />
       </div>
       <Panel title="Maintenance Cost" description="Track maintenance spend, spare cost, labor, external service, and downtime cost.">
         <MaintenanceBarChart data={costByType()} bars={['amount']} />
@@ -226,6 +233,7 @@ function MaintenanceDataTable({ rows }: { rows: TableRow[] }) {
 }
 
 function ReportsPanel() {
+  const { selectedClient } = usePlatform();
   return (
     <div className="space-y-5">
       <MaintenanceFilters />
@@ -234,7 +242,7 @@ function ReportsPanel() {
           {maintenanceReports.map((report) => (
             <div key={report} className="rounded-xl border border-white/10 bg-slate-950/30 p-4">
               <p className="font-medium text-white">{report}</p>
-              <p className="mt-2 text-sm text-slate-400">Company-scoped report for ABC Manufacturing.</p>
+              <p className="mt-2 text-sm text-slate-400">Company-scoped report for {selectedClient?.clientName ?? 'the selected company'}.</p>
               <div className="mt-4 flex flex-wrap gap-2">
                 {['Preview', 'PDF', 'Excel', 'CSV'].map((item) => <button key={item} className="form-button-subtle py-1 text-xs">{item}</button>)}
               </div>

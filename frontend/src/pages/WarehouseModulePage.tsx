@@ -11,6 +11,7 @@ import { RowActions } from '../components/RowActions';
 import { ScrollableTableFrame } from '../components/ScrollableTableFrame';
 import { StatCard } from '../components/StatCard';
 import { StatusBadge } from '../components/StatusBadge';
+import { scalePercent, scaleQty } from '../lib/clientVariance';
 import { applyModuleFilters, type ModuleFilterValues } from '../lib/moduleFilters';
 import { getUserDataScope, scopeFilterDefaults, scopeOptions } from '../lib/rbac';
 import { usePlatform } from '../platform/PlatformContext';
@@ -162,7 +163,7 @@ const cycleCountFilterMap = {
 };
 
 function WarehouseDashboard() {
-  const { platformUser } = usePlatform();
+  const { platformUser, selectedClientId } = usePlatform();
   const [filters, setFilters] = useState<ModuleFilterValues>(() => scopeFilterDefaults(userFromPlatform(platformUser), platformUser));
   const filteredReceiving = useMemo(
     () => applyModuleFilters(receivingRecords, filters, receivingFilterMap),
@@ -210,20 +211,24 @@ function WarehouseDashboard() {
   const avgCycleAccuracy = filteredCycleCounts.length
     ? Math.round((filteredCycleCounts.filter((item) => item.variance === 0).length / filteredCycleCounts.length) * 100)
     : 0;
+  const pickingAccuracy = scalePercent(97.6, selectedClientId);
+  const packingAccuracy = scalePercent(98.3, selectedClientId);
+  const binUtilization = scalePercent(82, selectedClientId);
+  const healthScore = scalePercent(88, selectedClientId);
 
   return (
     <div className="space-y-5">
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
         <StatCard label="Pending Receipts" value={pendingReceipts} helper="Inbound records with pending qty" accent="amber" />
         <StatCard label="Pending Putaway" value={pendingPutaway} helper="Open storage tasks" accent="amber" />
-        <StatCard label="Picking Accuracy" value="97.6%" helper="Task weighted" accent="emerald" />
-        <StatCard label="Packing Accuracy" value="98.3%" helper="Package validation" accent="emerald" />
+        <StatCard label="Picking Accuracy" value={`${pickingAccuracy}%`} helper="Task weighted" accent="emerald" />
+        <StatCard label="Packing Accuracy" value={`${packingAccuracy}%`} helper="Package validation" accent="emerald" />
         <StatCard label="Dispatch Readiness" value={dispatchReady} helper="Ready outbound loads" accent="blue" />
         <StatCard label="Warehouse Utilization" value={`${avgUtilization}%`} helper="Average occupied space" accent={avgUtilization > 85 ? 'amber' : 'emerald'} />
-        <StatCard label="Bin Utilization" value="82%" helper="Occupied bin capacity" accent="blue" />
+        <StatCard label="Bin Utilization" value={`${binUtilization}%`} helper="Occupied bin capacity" accent="blue" />
         <StatCard label="Cycle Count Accuracy" value={`${avgCycleAccuracy}%`} helper="Zero-variance locations" accent="emerald" />
         <StatCard label="Open Warehouse Tasks" value={openTasks} helper="Putaway, picks, moves" accent="violet" />
-        <StatCard label="Warehouse Health Score" value="88%" helper="Risk adjusted score" accent="emerald" />
+        <StatCard label="Warehouse Health Score" value={`${healthScore}%`} helper="Risk adjusted score" accent="emerald" />
       </div>
       <WarehouseFilters filters={filters} onChange={setFilters} />
       <div className="grid gap-5 xl:grid-cols-2">
@@ -271,9 +276,10 @@ function WarehouseRegister({ title, description, rows, searchKeys, action }: { t
 }
 
 function UtilizationPanel() {
-  const totalCapacity = utilizationRecords.reduce((sum, item) => sum + item.capacity, 0);
-  const occupied = utilizationRecords.reduce((sum, item) => sum + item.occupied, 0);
-  const available = utilizationRecords.reduce((sum, item) => sum + item.available, 0);
+  const { selectedClientId } = usePlatform();
+  const totalCapacity = scaleQty(utilizationRecords.reduce((sum, item) => sum + item.capacity, 0), selectedClientId);
+  const occupied = scaleQty(utilizationRecords.reduce((sum, item) => sum + item.occupied, 0), selectedClientId);
+  const available = scaleQty(utilizationRecords.reduce((sum, item) => sum + item.available, 0), selectedClientId);
   return (
     <div className="space-y-5">
       <div className="grid gap-4 md:grid-cols-4">
@@ -291,12 +297,14 @@ function UtilizationPanel() {
 }
 
 function LaborPanel() {
+  const { selectedClientId } = usePlatform();
+  const accuracy = scalePercent(97.2, selectedClientId);
   return (
     <div className="space-y-5">
       <div className="grid gap-4 md:grid-cols-3">
         <StatCard label="Tasks Assigned" value={laborRecords.reduce((sum, item) => sum + item.assignedTasks, 0)} helper="Current shift workload" accent="violet" />
         <StatCard label="Tasks Completed" value={laborRecords.reduce((sum, item) => sum + item.completedTasks, 0)} helper="Closed by warehouse team" accent="emerald" />
-        <StatCard label="Average Accuracy" value="97.2%" helper="User weighted accuracy" accent="emerald" />
+        <StatCard label="Average Accuracy" value={`${accuracy}%`} helper="User weighted accuracy" accent="emerald" />
       </div>
       <Panel title="Warehouse Labor Productivity" description="Workload, completion time, task progress, and accuracy by warehouse user.">
         <WarehouseBarChart data={laborRecords.map((item) => ({ name: item.user, assigned: item.assignedTasks, completed: item.completedTasks, pending: item.pendingTasks }))} bars={['assigned', 'completed', 'pending']} />
@@ -307,6 +315,7 @@ function LaborPanel() {
 }
 
 function ReportsPanel() {
+  const { selectedClient } = usePlatform();
   return (
     <div className="space-y-5">
       <WarehouseFilters />
@@ -315,7 +324,7 @@ function ReportsPanel() {
           {warehouseReports.map((report) => (
             <div key={report} className="rounded-xl border border-white/10 bg-slate-950/30 p-4">
               <p className="font-medium text-white">{report}</p>
-              <p className="mt-2 text-sm text-slate-400">Company-scoped report for ABC Manufacturing.</p>
+              <p className="mt-2 text-sm text-slate-400">Company-scoped report for {selectedClient?.clientName ?? 'the selected company'}.</p>
               <ReportExportButtons reportName={report} />
             </div>
           ))}
