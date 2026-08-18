@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
+import { ClipboardEvent, Dispatch, FormEvent, SetStateAction, useEffect, useMemo, useRef, useState } from 'react';
 import { useMutation, useQueries, useQueryClient } from '@tanstack/react-query';
 import { Cable, CheckCircle2, Database, Route, ShieldCheck, Trash2, UploadCloud } from 'lucide-react';
 
@@ -9,6 +9,7 @@ import { Panel } from '../components/Panel';
 import { StatusBadge } from '../components/StatusBadge';
 import { useClickOutside } from '../hooks/useClickOutside';
 import { canManagePlatform, canPerformAction, canUseDataHubUploads } from '../lib/rbac';
+import { computeTrimmedPasteValue } from '../lib/trimPaste';
 import { usePlatform } from '../platform/PlatformContext';
 import type { PlatformClient } from '../platform/types';
 import { backend } from '../services/api';
@@ -120,7 +121,7 @@ const dataDomains = [
   { value: 'Finance / Costing', route: 'Costing and reporting module', description: 'Inventory valuation, wastage, expiry loss and operational cost.' },
 ];
 
-const powerBiSourceGroups: Array<{ group: string; sources: Omit<DataSourceOption, 'group'>[] }> = [
+const dataSourceGroups: Array<{ group: string; sources: Omit<DataSourceOption, 'group'>[] }> = [
   {
     group: 'Files',
     sources: [
@@ -159,8 +160,8 @@ const powerBiSourceGroups: Array<{ group: string; sources: Omit<DataSourceOption
     group: 'Cloud Apps',
     sources: [
       { value: 'google_sheets', label: 'Google Sheets', description: 'Sheets, ranges, and shared spreadsheets.', auth: 'OAuth2 / service account', connectorType: 'CLOUD_APP' },
-      { value: 'sharepoint', label: 'SharePoint', description: 'SharePoint lists, libraries, and Excel files.', auth: 'Microsoft OAuth2', connectorType: 'CLOUD_APP' },
-      { value: 'onedrive', label: 'OneDrive', description: 'OneDrive files and folders.', auth: 'Microsoft OAuth2', connectorType: 'CLOUD_APP' },
+      { value: 'sharepoint', label: 'SharePoint', description: 'SharePoint lists, libraries, and Excel files.', auth: 'OAuth2', connectorType: 'CLOUD_APP' },
+      { value: 'onedrive', label: 'OneDrive', description: 'OneDrive files and folders.', auth: 'OAuth2', connectorType: 'CLOUD_APP' },
       { value: 'google_drive', label: 'Google Drive', description: 'Drive files, folders, and exported Sheets.', auth: 'Google OAuth2', connectorType: 'CLOUD_APP' },
       { value: 'salesforce', label: 'Salesforce', description: 'CRM accounts, orders, service, and custom objects.', auth: 'OAuth2', connectorType: 'CLOUD_APP' },
       { value: 'sap', label: 'SAP', description: 'SAP S/4HANA, ECC, OData, IDoc, and exported files.', auth: 'OAuth2 / Basic / SAP client', connectorType: 'ERP' },
@@ -191,7 +192,7 @@ const powerBiSourceGroups: Array<{ group: string; sources: Omit<DataSourceOption
   },
 ];
 
-const flatPowerBiSources = powerBiSourceGroups.flatMap((group) => group.sources.map((source) => ({ ...source, group: group.group })));
+const flatDataSources = dataSourceGroups.flatMap((group) => group.sources.map((source) => ({ ...source, group: group.group })));
 const guidedSteps = ['Select source', 'Connection details', 'Test connection', 'Select data', 'Preview', 'Transform', 'Map fields', 'Validate', 'Destination', 'Import or refresh'];
 const transformOptions = ['Rename columns', 'Remove columns', 'Change data type', 'Filter rows', 'Remove duplicates', 'Replace values', 'Split columns', 'Merge columns', 'Trim/clean text', 'Date formatting', 'Currency formatting', 'Join/merge datasets', 'Append datasets', 'Create calculated columns'];
 const refreshOptions = ['One-time import', 'Manual refresh', 'Scheduled refresh', 'Incremental refresh', 'Real-time webhook update', 'Retry failed refresh'];
@@ -210,6 +211,62 @@ const refreshHistoryRows = [
   { time: '2026-06-22 09:00', source: 'SAP S/4HANA Inventory', mode: 'Scheduled refresh', status: 'Completed', rows: '12,480' },
   { time: '2026-06-22 08:15', source: 'WMS Barcode Events', mode: 'Incremental refresh', status: 'Completed', rows: '3,128' },
   { time: '2026-06-21 23:45', source: 'Supplier REST API', mode: 'Retry failed refresh', status: 'Attention Needed', rows: '0' },
+];
+
+const beforeYouConnectTips = [
+  'Use least-privilege, read-only credentials wherever possible. Do not paste secrets into search boxes, names, or any field other than the credential field it belongs in.',
+  'Avoid importing unnecessary columns or history. Smaller imports validate, transform, and refresh faster.',
+  'Confirm the destination module and field mapping before turning on a scheduled or incremental refresh.',
+  'Document the source owner, expected row count, and refresh window before requesting approval.',
+];
+
+const connectorDecisionRows: Array<{ question: string; recommendation: string; firstStep: string }> = [
+  { question: 'Is the data a single workbook or delimited file?', recommendation: 'Excel or CSV', firstStep: 'Import the specific sheet or table; avoid loading a whole workbook.' },
+  { question: 'Is it many files with the same layout?', recommendation: 'Folder import', firstStep: 'Validate one sample file, then combine and transform the rest.' },
+  { question: 'Is it an operational database?', recommendation: 'Database connector', firstStep: 'Prefer a read-only view over a broad table scan.' },
+  { question: 'Is it a cloud app or API?', recommendation: 'REST, GraphQL, or OData', firstStep: 'Confirm API scope, rate limits, and the refresh identity.' },
+  { question: 'Is it shop-floor or machine data?', recommendation: 'IoT, PLC, or sensor connector', firstStep: 'Confirm the gateway, certificate, or token before connecting.' },
+  { question: 'Is there no system source yet?', recommendation: 'Manual entry, bulk paste, or template upload', firstStep: 'Use a controlled template and validate before import.' },
+];
+
+const authenticationReference: Array<{ option: string; meaning: string; useWithCare: string }> = [
+  { option: 'File upload / cloud link', meaning: 'Uses file access or a shared link rather than a login.', useWithCare: 'A moved or renamed file breaks scheduled refresh.' },
+  { option: 'Database credentials', meaning: 'A database-specific username and password.', useWithCare: 'Use a governed read-only account; never embed secrets in a saved query.' },
+  { option: 'API key / OAuth2 / Basic', meaning: 'Token or key-based access used by APIs and cloud apps.', useWithCare: 'Keys and scopes must be controlled; published refresh may need reauthorization.' },
+  { option: 'Certificate / token', meaning: 'Device or gateway identity used by IoT and machine connectors.', useWithCare: 'Expired certificates or tokens silently stop new data from arriving.' },
+  { option: 'Platform RBAC', meaning: 'Access controlled by the signed-in user’s role, for manual entry and uploads.', useWithCare: 'Still subject to the approval gate for critical or master-data changes.' },
+];
+
+const troubleshootingRows: Array<{ symptom: string; likelyCause: string; nextStep: string }> = [
+  { symptom: 'Connector cannot be found', likelyCause: 'Wrong connector group filter or category selected.', nextStep: 'Clear the connector group filter and search all sources.' },
+  { symptom: 'Sign-in loops or access denied', likelyCause: 'Wrong identity, missing permission, or expired credential.', nextStep: 'Confirm the intended account and request read access from the source owner.' },
+  { symptom: 'Preview is slow', likelyCause: 'Unfiltered source, broad query, or too many columns.', nextStep: 'Filter early, select a view instead of a raw table, and remove unused columns.' },
+  { symptom: 'Works in Test but fails on scheduled refresh', likelyCause: 'Credential was saved for the one-time test only.', nextStep: 'Re-save the credential against the scheduled or incremental refresh mode.' },
+  { symptom: 'Numbers or dates look wrong', likelyCause: 'Type inference, locale, or time-zone mismatch.', nextStep: 'Check detected types in Preview before loading, and compare a sample to the source.' },
+  { symptom: 'Duplicate rows after import', likelyCause: 'Combined files include repeated history, or the source lacks a key.', nextStep: 'Identify the business key and deduplicate only after confirming the intended grain.' },
+  { symptom: 'Import volume is too large', likelyCause: 'Too many columns, unneeded history, or duplicate connections.', nextStep: 'Remove unused columns, filter history, and reuse an existing connection where possible.' },
+];
+
+const preImportChecklist = [
+  'I selected only the tables, sheets, files, and columns needed.',
+  'I used an approved, least-privilege credential and did not paste secrets into the wrong field.',
+  'I verified types, row count, and status in Preview before loading.',
+  'I chose Get Data directly or added Transform steps deliberately, based on whether the source already matches the destination schema.',
+  'I chose the destination module and refresh mode on purpose, not by default.',
+  'I know who approves critical imports and who owns refresh failures.',
+];
+
+const getDataGlossary: Array<{ term: string; meaning: string }> = [
+  { term: 'Connector', meaning: 'The source type used to reach a system or file format, such as Excel, a database, or an API.' },
+  { term: 'Preview', meaning: 'A read-only sample of the source data and detected types shown before anything is loaded.' },
+  { term: 'Transform', meaning: 'Cleanup steps such as renaming, filtering, or type changes applied before data reaches a module.' },
+  { term: 'Field mapping', meaning: 'The link between a source field and the destination field it will populate.' },
+  { term: 'Validation', meaning: 'Automated checks, such as duplicate or required-field checks, run before an import is approved.' },
+  { term: 'Destination module', meaning: 'The part of the platform (Inventory, Production, Planning, and so on) that receives the imported data.' },
+  { term: 'Refresh mode', meaning: 'How often the connection re-imports: one-time, manual, scheduled, incremental, or real-time webhook.' },
+  { term: 'Credential', meaning: 'The saved authentication method and identity used to connect to a source.' },
+  { term: 'Approval gate', meaning: 'A required sign-off before a critical import or master-data overwrite executes.' },
+  { term: 'Audit log', meaning: 'The record of connector, client, module, mapping, validator, and result for every import.' },
 ];
 
 const inputClass = 'rounded-2xl border border-white/10 bg-white/10 px-3 py-2 text-sm text-white outline-none placeholder:text-slate-500 focus:border-cyan-300/60 focus:shadow-[0_0_18px_rgba(79,172,254,0.25)]';
@@ -275,6 +332,18 @@ function readRecord(value: unknown) {
   return value && typeof value === 'object' ? value as Record<string, unknown> : {};
 }
 
+function pasteTrimIntoField<T>(event: ClipboardEvent<HTMLInputElement>, setState: Dispatch<SetStateAction<T>>, key: keyof T) {
+  const trimmed = computeTrimmedPasteValue(event);
+  if (trimmed !== null) setState((prev) => ({ ...prev, [key]: trimmed }));
+}
+
+function trimFieldOnBlur<T>(setState: Dispatch<SetStateAction<T>>, key: keyof T) {
+  setState((prev) => {
+    const current = String(prev[key] ?? '');
+    return current === current.trim() ? prev : { ...prev, [key]: current.trim() };
+  });
+}
+
 function dataHubPlantTokens(row: Record<string, unknown>) {
   const lineage = readRecord(row.lineage);
   const metadata = readRecord(row.metadata);
@@ -329,6 +398,11 @@ function CompanySearchSelect({
             placeholder="Search clients..."
             value={search}
             onChange={(event) => setSearch(event.target.value)}
+            onPaste={(event) => {
+              const trimmed = computeTrimmedPasteValue(event);
+              if (trimmed !== null) setSearch(trimmed);
+            }}
+            onBlur={() => setSearch((value) => value.trim())}
             autoFocus
           />
           <div className="mt-2 max-h-64 overflow-y-auto pr-1 [scrollbar-color:rgba(34,211,238,0.55)_rgba(255,255,255,0.05)]">
@@ -434,6 +508,11 @@ function PlantSearchSelect({
             placeholder="Search plants..."
             value={search}
             onChange={(event) => setSearch(event.target.value)}
+            onPaste={(event) => {
+              const trimmed = computeTrimmedPasteValue(event);
+              if (trimmed !== null) setSearch(trimmed);
+            }}
+            onBlur={() => setSearch((value) => value.trim())}
             autoFocus
           />
           <div className="mt-2 max-h-48 overflow-y-auto pr-1 [scrollbar-color:rgba(34,211,238,0.55)_rgba(255,255,255,0.05)]">
@@ -485,7 +564,7 @@ function PlantSelector({
   );
 }
 
-function PowerBiGetDataExperience({
+function GetDataExperience({
   selectedSource,
   selectedSourceValue,
   onSelectSource,
@@ -562,16 +641,16 @@ function PowerBiGetDataExperience({
   const connectionProfile = connectionProfileFor(selectedSource);
   const commonSourceValues = ['excel', 'sql_server', 'csv', 'web_url', 'odata', 'postgresql', 'google_sheets', 'manual_entry'];
   const commonSources = commonSourceValues
-    .map((value) => flatPowerBiSources.find((source) => source.value === value))
+    .map((value) => flatDataSources.find((source) => source.value === value))
     .filter(Boolean) as DataSourceOption[];
   const quickCards = [
-    { title: 'Import from Excel', source: flatPowerBiSources.find((source) => source.value === 'excel') },
-    { title: 'Import from SQL Server', source: flatPowerBiSources.find((source) => source.value === 'sql_server') },
-    { title: 'Paste data into table', source: flatPowerBiSources.find((source) => source.value === 'bulk_paste') },
-    { title: 'Connect web or API', source: flatPowerBiSources.find((source) => source.value === 'rest_api') },
+    { title: 'Import from Excel', source: flatDataSources.find((source) => source.value === 'excel') },
+    { title: 'Import from SQL Server', source: flatDataSources.find((source) => source.value === 'sql_server') },
+    { title: 'Paste data into table', source: flatDataSources.find((source) => source.value === 'bulk_paste') },
+    { title: 'Connect web or API', source: flatDataSources.find((source) => source.value === 'rest_api') },
   ].filter((item): item is { title: string; source: DataSourceOption } => Boolean(item.source));
   const normalizedSearch = sourceSearch.trim().toLowerCase();
-  const matchingSourceGroups = powerBiSourceGroups
+  const matchingSourceGroups = dataSourceGroups
     .map((group) => ({
       ...group,
       sources: group.sources.filter((source) =>
@@ -590,7 +669,7 @@ function PowerBiGetDataExperience({
   }
   return (
     <div className="mt-4 space-y-4">
-      <Panel title="Home" description="Power BI-style ribbon for choosing sources, entering data, transforming data, and creating import drafts.">
+      <Panel title="Home" description="Ribbon for choosing sources, entering data, transforming data, and creating import drafts.">
         <div className="overflow-hidden rounded-[24px] border border-white/10 bg-slate-950/40">
           <div className="flex flex-wrap gap-1 border-b border-white/10 bg-white/[0.03] px-4 pt-3">
             {['File', 'Home', 'Insert', 'Modeling', 'View', 'Optimize', 'Help'].map((tab) => (
@@ -623,7 +702,7 @@ function PowerBiGetDataExperience({
               ['Text box', 'bulk_paste'],
               ['More visuals', 'template_upload'],
             ].map(([label, value]) => {
-              const source = flatPowerBiSources.find((item) => item.value === value);
+              const source = flatDataSources.find((item) => item.value === value);
               return (
                 <button
                   key={label}
@@ -654,6 +733,11 @@ function PowerBiGetDataExperience({
                     placeholder="Search all sources: Excel, SQL, SAP, API, sensor..."
                     value={sourceSearch}
                     onChange={(event) => setSourceSearch(event.target.value)}
+                    onPaste={(event) => {
+                      const trimmed = computeTrimmedPasteValue(event);
+                      if (trimmed !== null) setSourceSearch(trimmed);
+                    }}
+                    onBlur={() => setSourceSearch((value) => value.trim())}
                   />
                 ) : null}
                 {!sourceMenuExpanded ? (
@@ -809,7 +893,7 @@ function PowerBiGetDataExperience({
       </Panel>
 
       <div className="grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">
-        <Panel title="Live Connector Catalog" description="Connector registry returned by the backend, grouped like Power BI Get Data.">
+        <Panel title="Live Connector Catalog" description="Connector registry returned by the backend, grouped by source category.">
           <div className="mb-4 flex flex-wrap gap-2">
             <StatusBadge status={`${liveConnectorGroups.length} groups`} />
             <StatusBadge status={`${liveConnectorCount} connectors`} />
@@ -971,7 +1055,7 @@ function PowerBiGetDataExperience({
           )}
         </Panel>
 
-        <Panel title="Data Model" description="Power BI-style model area with tables, columns, measures, calculated columns, keys, and relationships.">
+        <Panel title="Data Model" description="Model area with tables, columns, measures, calculated columns, keys, and relationships.">
           <div className="space-y-3">
             {(backendModel?.tables ?? []).slice(0, 4).map((table) => (
               <div key={`${table.source}-${table.table}`} className="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
@@ -1114,7 +1198,7 @@ function SourceSpecificConnectorPanel({
 
   if (source.value === 'excel') {
     return (
-      <Panel title="Excel Workbook" description="Power BI-style workbook import. Choose a file or cloud link first, then discover sheets and named tables.">
+      <Panel title="Excel Workbook" description="Workbook import. Choose a file or cloud link first, then discover sheets and named tables.">
         <ConnectorHeader source={source} nextAction="Open workbook navigator" />
         <div className="grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">
           <div className="rounded-2xl border border-cyan-300/20 bg-cyan-400/[0.07] p-4">
@@ -1570,7 +1654,7 @@ function connectionProfileFor(source: DataSourceOption): ConnectionProfile {
       description: 'Choose an Excel workbook, then select sheets or named tables before previewing rows.',
       primaryAction: 'Open Workbook',
       assetLabel: 'Sheet / Table',
-      assetDescription: 'Power BI-style sheet and named table selection for the selected workbook.',
+      assetDescription: 'Sheet and named table selection for the selected workbook.',
       fields: [
         { key: 'workbook', label: 'Workbook file', kind: 'file', fullWidth: true },
         { key: 'cloudLink', label: 'Cloud workbook link', placeholder: 'https://onedrive/sharepoint/google-drive/workbook.xlsx', fullWidth: true },
@@ -1723,7 +1807,7 @@ export function DataHubPage({ user }: { user: RuntimeUser }) {
   const canUpload = canUseDataHubUploads(user);
   const canDelete = canPerformAction(user, 'delete');
   const [isDragging, setIsDragging] = useState(false);
-  const [activeView, setActiveView] = useState<'get-data' | 'sources' | 'catalog' | 'mapping' | 'refresh'>('get-data');
+  const [activeView, setActiveView] = useState<'get-data' | 'sources' | 'catalog' | 'mapping' | 'refresh' | 'guide'>('get-data');
   const [selectedSourceValue, setSelectedSourceValue] = useState('excel');
   const [wizardStep, setWizardStep] = useState(1);
   const [selectedTransforms, setSelectedTransforms] = useState<string[]>(['Trim/clean text', 'Change data type', 'Remove duplicates']);
@@ -1835,7 +1919,7 @@ export function DataHubPage({ user }: { user: RuntimeUser }) {
       return tokens.some((token) => token === targetPlantId || normalizeCompanyName(token) === targetPlantName);
     };
   }, [targetPlant?.plantId, targetPlant?.plantName]);
-  const selectedPowerSource = flatPowerBiSources.find((source) => source.value === selectedSourceValue) ?? flatPowerBiSources[0];
+  const selectedActiveSource = flatDataSources.find((source) => source.value === selectedSourceValue) ?? flatDataSources[0];
   const allGetDataConnectionRows = useMemo(() => getDataConnections.data ?? [], [getDataConnections.data]);
   const getDataConnectionRows = useMemo(
     () => allGetDataConnectionRows.filter((row) => isTargetCompanyRecord(row) && isTargetPlantRecord(row as unknown as Record<string, unknown>)),
@@ -2057,6 +2141,14 @@ export function DataHubPage({ user }: { user: RuntimeUser }) {
         placeholder={field.label}
         value={values[field.key] ?? ''}
         onChange={(event) => setDetail(setter, values, field.key, event.target.value)}
+        onPaste={(event) => {
+          const trimmed = computeTrimmedPasteValue(event);
+          if (trimmed !== null) setDetail(setter, values, field.key, trimmed);
+        }}
+        onBlur={() => {
+          const current = values[field.key] ?? '';
+          if (current !== current.trim()) setDetail(setter, values, field.key, current.trim());
+        }}
         required={field.required}
         title={field.placeholder}
       />
@@ -2159,13 +2251,13 @@ export function DataHubPage({ user }: { user: RuntimeUser }) {
   function getDataPayload(companyId = targetCompanyId) {
     return {
       company_id: companyId,
-      connector_key: selectedPowerSource.value,
-      connector_name: selectedPowerSource.label,
-      connector_category: selectedPowerSource.group,
-      connection_name: `${targetCompany?.code ?? 'CLIENT'} ${selectedPowerSource.label} ${selectedDestination}`,
-      auth_method: selectedPowerSource.auth,
+      connector_key: selectedActiveSource.value,
+      connector_name: selectedActiveSource.label,
+      connector_category: selectedActiveSource.group,
+      connection_name: `${targetCompany?.code ?? 'CLIENT'} ${selectedActiveSource.label} ${selectedDestination}`,
+      auth_method: selectedActiveSource.auth,
       connection_details: {
-        ...defaultGetDataDetails(selectedPowerSource),
+        ...defaultGetDataDetails(selectedActiveSource),
         plant_id: targetPlant?.plantId,
         plant_name: targetPlant?.plantName,
       },
@@ -2203,7 +2295,7 @@ export function DataHubPage({ user }: { user: RuntimeUser }) {
       transformGetDataPreview.mutate({
         company_id: companyId,
         connection_id: selectedGetDataConnection.id,
-        recipe_name: `${selectedPowerSource.label} Power Query Draft`,
+        recipe_name: `${selectedActiveSource.label} Transform Draft`,
         operations: selectedTransforms.map((operation) => ({ operation })),
       });
     }
@@ -2245,7 +2337,7 @@ export function DataHubPage({ user }: { user: RuntimeUser }) {
               setConnectionTested(false);
               setActiveView('get-data');
             }}>
-              {flatPowerBiSources.map((source) => <option key={source.value} value={source.value}>{source.label}</option>)}
+              {flatDataSources.map((source) => <option key={source.value} value={source.value}>{source.label}</option>)}
             </select>
           </label>
           <label className="block text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
@@ -2259,12 +2351,12 @@ export function DataHubPage({ user }: { user: RuntimeUser }) {
         <div className="mt-3 grid gap-3 xl:grid-cols-[1fr_0.75fr_0.75fr_0.75fr]">
           <label className="block text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
             Connector group
-            <select className={`${selectClass} mt-2 w-full`} value={selectedPowerSource.group} onChange={(event) => {
-              const nextSource = flatPowerBiSources.find((source) => source.group === event.target.value) ?? selectedPowerSource;
+            <select className={`${selectClass} mt-2 w-full`} value={selectedActiveSource.group} onChange={(event) => {
+              const nextSource = flatDataSources.find((source) => source.group === event.target.value) ?? selectedActiveSource;
               setSelectedSourceValue(nextSource.value);
               setConnectionTested(false);
             }}>
-              {powerBiSourceGroups.map((group) => <option key={group.group}>{group.group}</option>)}
+              {dataSourceGroups.map((group) => <option key={group.group}>{group.group}</option>)}
             </select>
           </label>
           <label className="block text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
@@ -2294,7 +2386,7 @@ export function DataHubPage({ user }: { user: RuntimeUser }) {
           {[
             ['Client', targetCompany?.name ?? targetCompanyId],
             ['Plant', targetPlant?.plantName ?? 'All plants'],
-            ['Source', selectedPowerSource.label],
+            ['Source', selectedActiveSource.label],
             ['Status', connectionTested ? 'Connection ready' : 'Not tested'],
           ].map(([label, value]) => (
             <div key={label} className="rounded-2xl border border-white/10 bg-white/[0.035] px-3 py-2">
@@ -2312,6 +2404,7 @@ export function DataHubPage({ user }: { user: RuntimeUser }) {
           { key: 'catalog', label: 'Catalog & Uploads' },
           { key: 'mapping', label: 'Field Mapping' },
           { key: 'refresh', label: 'Refresh / Logs' },
+          { key: 'guide', label: 'Get Data Guide' },
         ].map((item) => (
           <button
             key={item.key}
@@ -2327,8 +2420,8 @@ export function DataHubPage({ user }: { user: RuntimeUser }) {
       </div>
 
       {activeView === 'get-data' ? (
-        <PowerBiGetDataExperience
-          selectedSource={selectedPowerSource}
+        <GetDataExperience
+          selectedSource={selectedActiveSource}
           selectedSourceValue={selectedSourceValue}
           onSelectSource={(source) => {
             setSelectedSourceValue(source.value);
@@ -2403,9 +2496,9 @@ export function DataHubPage({ user }: { user: RuntimeUser }) {
                 </option>
               ))}
             </select>
-            <input className={inputClass} placeholder="System name" value={newConnection.system_name} onChange={(event) => setNewConnection({ ...newConnection, system_name: event.target.value })} required />
-            <input className={inputClass} placeholder="Status" value={newConnection.connection_status} onChange={(event) => setNewConnection({ ...newConnection, connection_status: event.target.value })} required />
-            <input className={inputClass} placeholder="Last sync" value={newConnection.last_sync} onChange={(event) => setNewConnection({ ...newConnection, last_sync: event.target.value })} required />
+            <input className={inputClass} placeholder="System name" value={newConnection.system_name} onChange={(event) => setNewConnection({ ...newConnection, system_name: event.target.value })} onPaste={(event) => pasteTrimIntoField(event, setNewConnection, 'system_name')} onBlur={() => trimFieldOnBlur(setNewConnection, 'system_name')} required />
+            <input className={inputClass} placeholder="Status" value={newConnection.connection_status} onChange={(event) => setNewConnection({ ...newConnection, connection_status: event.target.value })} onPaste={(event) => pasteTrimIntoField(event, setNewConnection, 'connection_status')} onBlur={() => trimFieldOnBlur(setNewConnection, 'connection_status')} required />
+            <input className={inputClass} placeholder="Last sync" value={newConnection.last_sync} onChange={(event) => setNewConnection({ ...newConnection, last_sync: event.target.value })} onPaste={(event) => pasteTrimIntoField(event, setNewConnection, 'last_sync')} onBlur={() => trimFieldOnBlur(setNewConnection, 'last_sync')} required />
             <input className={inputClass} type="number" placeholder="Health score" value={newConnection.health_score} onChange={(event) => setNewConnection({ ...newConnection, health_score: Number(event.target.value) })} required />
             <input className={inputClass} type="number" placeholder="Record count" value={newConnection.record_count} onChange={(event) => setNewConnection({ ...newConnection, record_count: Number(event.target.value) })} required />
             {renderDetailFields(activeSource, connectionDetails, setConnectionDetails)}
@@ -2424,7 +2517,7 @@ export function DataHubPage({ user }: { user: RuntimeUser }) {
               { key: 'company_name', label: 'Company' },
               { key: 'system_name', label: 'System' },
               { key: 'system_type', label: 'Type / Source / Auth' },
-              { key: 'connection_status', label: 'Status', render: (value, row) => <input className="w-28 rounded-xl border border-white/10 bg-white/10 px-2 py-1 text-xs text-white" value={String(value)} onChange={(event) => updateConnection.mutate({ id: String(row.id), payload: { ...(row as ConnectedSystem), company_id: String(row.company_id), connection_status: event.target.value } })} /> },
+              { key: 'connection_status', label: 'Status', render: (value, row) => <input className="w-28 rounded-xl border border-white/10 bg-white/10 px-2 py-1 text-xs text-white" value={String(value)} onChange={(event) => updateConnection.mutate({ id: String(row.id), payload: { ...(row as ConnectedSystem), company_id: String(row.company_id), connection_status: event.target.value } })} onPaste={(event) => { const trimmed = computeTrimmedPasteValue(event); if (trimmed !== null) updateConnection.mutate({ id: String(row.id), payload: { ...(row as ConnectedSystem), company_id: String(row.company_id), connection_status: trimmed } }); }} onBlur={() => { const current = String(value); if (current !== current.trim()) updateConnection.mutate({ id: String(row.id), payload: { ...(row as ConnectedSystem), company_id: String(row.company_id), connection_status: current.trim() } }); }} /> },
               { key: 'health_score', label: 'Health', render: (value, row) => <input className="w-20 rounded-xl border border-white/10 bg-white/10 px-2 py-1 text-xs text-white" type="number" value={Number(value)} onChange={(event) => updateConnection.mutate({ id: String(row.id), payload: { ...(row as ConnectedSystem), company_id: String(row.company_id), health_score: Number(event.target.value) } })} /> },
               { key: 'id', label: 'Action', render: (value) => canDelete ? <button className="rounded-xl border border-red-300/20 bg-red-400/10 px-2 py-1 text-xs text-red-100 hover:bg-red-400/20" onClick={() => {
                 if (window.confirm('Delete this connected system? DataHub tables will refresh immediately.')) {
@@ -2477,7 +2570,7 @@ export function DataHubPage({ user }: { user: RuntimeUser }) {
                       </option>
                     ))}
                   </select>
-                  <input className={inputClass} placeholder="Resource name" value={cloudSource.resource_name} onChange={(event) => setCloudSource({ ...cloudSource, resource_name: event.target.value })} required />
+                  <input className={inputClass} placeholder="Resource name" value={cloudSource.resource_name} onChange={(event) => setCloudSource({ ...cloudSource, resource_name: event.target.value })} onPaste={(event) => pasteTrimIntoField(event, setCloudSource, 'resource_name')} onBlur={() => trimFieldOnBlur(setCloudSource, 'resource_name')} required />
                   <select className={selectClass} value={cloudSource.file_format} onChange={(event) => setCloudSource({ ...cloudSource, file_format: event.target.value })}>
                     {getSourceConfig('cloud_storage').formats.map((format) => (
                       <option key={format} value={format}>
@@ -2485,7 +2578,7 @@ export function DataHubPage({ user }: { user: RuntimeUser }) {
                       </option>
                     ))}
                   </select>
-                  <input className={`${inputClass} md:col-span-2`} placeholder="Cloud file or folder URL" value={cloudSource.resource_url} onChange={(event) => setCloudSource({ ...cloudSource, resource_url: event.target.value })} required />
+                  <input className={`${inputClass} md:col-span-2`} placeholder="Cloud file or folder URL" value={cloudSource.resource_url} onChange={(event) => setCloudSource({ ...cloudSource, resource_url: event.target.value })} onPaste={(event) => pasteTrimIntoField(event, setCloudSource, 'resource_url')} onBlur={() => trimFieldOnBlur(setCloudSource, 'resource_url')} required />
                   {renderDetailFields(getSourceConfig('cloud_storage'), cloudDetails, setCloudDetails)}
                   <select className={selectClass} value={cloudSource.sync_mode} onChange={(event) => setCloudSource({ ...cloudSource, sync_mode: event.target.value })}>
                     <option value="manual">Manual</option>
@@ -2555,7 +2648,7 @@ export function DataHubPage({ user }: { user: RuntimeUser }) {
                 </option>
               ))}
             </select>
-            <input className={inputClass} placeholder="Data owner" value={newCatalogEntry.owner} onChange={(event) => setNewCatalogEntry({ ...newCatalogEntry, owner: event.target.value })} required />
+            <input className={inputClass} placeholder="Data owner" value={newCatalogEntry.owner} onChange={(event) => setNewCatalogEntry({ ...newCatalogEntry, owner: event.target.value })} onPaste={(event) => pasteTrimIntoField(event, setNewCatalogEntry, 'owner')} onBlur={() => trimFieldOnBlur(setNewCatalogEntry, 'owner')} required />
             <input className={inputClass} type="number" placeholder="Quality score" value={newCatalogEntry.quality_score} onChange={(event) => setNewCatalogEntry({ ...newCatalogEntry, quality_score: Number(event.target.value) })} required />
             {renderDetailFields(activeCatalogSource, catalogDetails, setCatalogDetails)}
             <div className="rounded-2xl border border-cyan-300/15 bg-cyan-400/8 p-3 text-sm text-slate-200 md:col-span-2">
@@ -2625,10 +2718,10 @@ export function DataHubPage({ user }: { user: RuntimeUser }) {
                 </option>
               ))}
             </select>
-            <input className={inputClass} placeholder="Source field" value={newMapping.source_field} onChange={(event) => setNewMapping({ ...newMapping, source_field: event.target.value })} required />
-            <input className={inputClass} placeholder="Target entity" value={newMapping.target_entity} onChange={(event) => setNewMapping({ ...newMapping, target_entity: event.target.value })} required />
-            <input className={inputClass} placeholder="Target field" value={newMapping.target_field} onChange={(event) => setNewMapping({ ...newMapping, target_field: event.target.value })} required />
-            <input className={inputClass} placeholder="Transform rule" value={newMapping.transform_rule ?? ''} onChange={(event) => setNewMapping({ ...newMapping, transform_rule: event.target.value })} />
+            <input className={inputClass} placeholder="Source field" value={newMapping.source_field} onChange={(event) => setNewMapping({ ...newMapping, source_field: event.target.value })} onPaste={(event) => pasteTrimIntoField(event, setNewMapping, 'source_field')} onBlur={() => trimFieldOnBlur(setNewMapping, 'source_field')} required />
+            <input className={inputClass} placeholder="Target entity" value={newMapping.target_entity} onChange={(event) => setNewMapping({ ...newMapping, target_entity: event.target.value })} onPaste={(event) => pasteTrimIntoField(event, setNewMapping, 'target_entity')} onBlur={() => trimFieldOnBlur(setNewMapping, 'target_entity')} required />
+            <input className={inputClass} placeholder="Target field" value={newMapping.target_field} onChange={(event) => setNewMapping({ ...newMapping, target_field: event.target.value })} onPaste={(event) => pasteTrimIntoField(event, setNewMapping, 'target_field')} onBlur={() => trimFieldOnBlur(setNewMapping, 'target_field')} required />
+            <input className={inputClass} placeholder="Transform rule" value={newMapping.transform_rule ?? ''} onChange={(event) => setNewMapping({ ...newMapping, transform_rule: event.target.value })} onPaste={(event) => pasteTrimIntoField(event, setNewMapping, 'transform_rule')} onBlur={() => trimFieldOnBlur(setNewMapping, 'transform_rule')} />
             <input className={inputClass} type="number" step="0.01" min="0" max="1" placeholder="Confidence" value={newMapping.confidence} onChange={(event) => setNewMapping({ ...newMapping, confidence: Number(event.target.value) })} required />
             <button className="rounded-2xl border border-cyan-300/20 bg-cyan-400/15 px-3 py-2 text-sm font-semibold text-cyan-50 disabled:opacity-60 md:col-span-3" disabled={createMapping.isPending}>
               {createMapping.isPending ? 'Saving...' : 'Add Mapping Rule'}
@@ -2690,6 +2783,94 @@ export function DataHubPage({ user }: { user: RuntimeUser }) {
               ))}
             </div>
           </Panel>
+        </div>
+      ) : null}
+
+      {activeView === 'guide' ? (
+        <div className="mt-4 space-y-4">
+          <Panel title="Before you connect" description="Read this before choosing a source and entering connection details.">
+            <ul className="space-y-2">
+              {beforeYouConnectTips.map((tip) => (
+                <li key={tip} className="flex gap-3 rounded-2xl border border-white/10 bg-slate-950/30 p-3 text-sm leading-6 text-slate-300">
+                  <span className="mt-0.5 text-cyan-300">•</span>
+                  <span>{tip}</span>
+                </li>
+              ))}
+            </ul>
+          </Panel>
+
+          <Panel title="Choose the right connector" description="If you are unsure which source type to pick, start here.">
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[720px] text-sm">
+                <thead>
+                  <tr className="border-b border-white/10 text-left text-xs uppercase tracking-[0.08em] text-slate-500">
+                    <th className="px-3 py-2">Question</th>
+                    <th className="px-3 py-2">Recommended path</th>
+                    <th className="px-3 py-2">First step</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {connectorDecisionRows.map((row) => (
+                    <tr key={row.question} className="border-b border-white/10">
+                      <td className="px-3 py-3 text-slate-300">{row.question}</td>
+                      <td className="px-3 py-3 font-medium text-white">{row.recommendation}</td>
+                      <td className="px-3 py-3 text-slate-400">{row.firstStep}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </Panel>
+
+          <div className="grid gap-4 xl:grid-cols-2">
+            <Panel title="Authentication types" description="What each credential option means and where to be careful.">
+              <div className="space-y-3">
+                {authenticationReference.map((row) => (
+                  <div key={row.option} className="rounded-2xl border border-white/10 bg-slate-950/30 p-3">
+                    <p className="font-semibold text-white">{row.option}</p>
+                    <p className="mt-1 text-sm text-slate-400">{row.meaning}</p>
+                    <p className="mt-1 text-sm text-amber-200">{row.useWithCare}</p>
+                  </div>
+                ))}
+              </div>
+            </Panel>
+
+            <Panel title="Troubleshooting by symptom" description="Match what you are seeing to the likely cause and next step.">
+              <div className="space-y-3">
+                {troubleshootingRows.map((row) => (
+                  <div key={row.symptom} className="rounded-2xl border border-white/10 bg-slate-950/30 p-3">
+                    <p className="font-semibold text-white">{row.symptom}</p>
+                    <p className="mt-1 text-sm text-slate-400">Likely cause: {row.likelyCause}</p>
+                    <p className="mt-1 text-sm text-emerald-200">Next step: {row.nextStep}</p>
+                  </div>
+                ))}
+              </div>
+            </Panel>
+          </div>
+
+          <div className="grid gap-4 xl:grid-cols-2">
+            <Panel title="Pre-import checklist" description="Confirm each item before you load or schedule a refresh.">
+              <ul className="space-y-2">
+                {preImportChecklist.map((item) => (
+                  <li key={item} className="flex gap-3 rounded-2xl border border-white/10 bg-slate-950/30 p-3 text-sm leading-6 text-slate-300">
+                    <span className="mt-0.5 text-emerald-300">☑</span>
+                    <span>{item}</span>
+                  </li>
+                ))}
+              </ul>
+            </Panel>
+
+            <Panel title="Terminology" description="Terms used across the Get Data workspace.">
+              <dl className="space-y-2">
+                {getDataGlossary.map((entry) => (
+                  <div key={entry.term} className="rounded-2xl border border-white/10 bg-slate-950/30 p-3">
+                    <dt className="font-semibold text-white">{entry.term}</dt>
+                    <dd className="mt-1 text-sm text-slate-400">{entry.meaning}</dd>
+                  </div>
+                ))}
+              </dl>
+            </Panel>
+          </div>
         </div>
       ) : null}
 

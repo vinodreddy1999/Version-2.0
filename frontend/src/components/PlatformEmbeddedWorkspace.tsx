@@ -1188,7 +1188,7 @@ function IntegrationsWorkspace() {
         <Select value={client} onChange={setClient} label="All clients" options={state.clients.map((item) => [item.clientId, item.clientName])} />
         <Select value={module} onChange={setModule} label="All modules" options={moduleNames} />
       </div>
-      <Notice>{summary}. Open DataHub for Power BI-style Get Data, transformation, mapping, validation, approval, refresh history, error logs, and audit logs.</Notice>
+      <Notice>{summary}. Open DataHub for Get Data, transformation, mapping, validation, approval, refresh history, error logs, and audit logs.</Notice>
       <Table headers={['Client', 'Module', 'Source', 'Connector', 'Refresh', 'Data Quality', 'Last Sync', 'Status', 'Action']} minWidth="min-w-[1250px]" count={rows.length}>
         {rows.map((row) => (
           <tr key={`${row.clientId}-${row.moduleName}-${row.source}`} className="border-b border-white/10 hover:bg-white/[0.04]">
