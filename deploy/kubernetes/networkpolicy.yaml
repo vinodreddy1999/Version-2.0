@@ -1,0 +1,44 @@
+# Baseline pod-to-pod isolation for the metam namespace. Restricts inbound
+# traffic to the app's own port and outbound traffic to DNS, the database,
+# and general HTTPS/HTTP egress for external integrations (ERP/SAP/etc).
+#
+# This is a conservative starting point, not a final policy: validate against
+# your actual cluster topology (ingress controller namespace/labels, whether
+# Postgres/Redis are in-cluster or external) before applying to a real
+# environment, since NetworkPolicy is enforced only if your CNI supports it.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: metam-fullstack
+  namespace: metam
+spec:
+  podSelector:
+    matchLabels:
+      app: metam-fullstack
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - ports:
+        - protocol: TCP
+          port: 8080
+  egress:
+    - to:
+        - namespaceSelector: {}
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+    - to:
+        - namespaceSelector: {}
+      ports:
+        - protocol: TCP
+          port: 5432
+        - protocol: TCP
+          port: 6379
+    - ports:
+        - protocol: TCP
+          port: 443
+        - protocol: TCP
+          port: 80

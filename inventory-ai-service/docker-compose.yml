@@ -2,9 +2,9 @@ services:
   inventory-ai-postgres:
     image: postgres:16-alpine
     environment:
-      POSTGRES_USER: inventory_ai
-      POSTGRES_PASSWORD: inventory_ai
-      POSTGRES_DB: inventory_ai
+      POSTGRES_USER: ${INVENTORY_AI_POSTGRES_USER:-inventory_ai}
+      POSTGRES_PASSWORD: ${INVENTORY_AI_POSTGRES_PASSWORD:-inventory_ai}
+      POSTGRES_DB: ${INVENTORY_AI_POSTGRES_DB:-inventory_ai}
     ports:
       - "5433:5432"
     volumes:
@@ -13,7 +13,7 @@ services:
   inventory-ai-service:
     build: .
     environment:
-      DATABASE_URL: postgresql+psycopg2://inventory_ai:inventory_ai@inventory-ai-postgres:5432/inventory_ai
+      DATABASE_URL: postgresql+psycopg2://${INVENTORY_AI_POSTGRES_USER:-inventory_ai}:${INVENTORY_AI_POSTGRES_PASSWORD:-inventory_ai}@inventory-ai-postgres:5432/${INVENTORY_AI_POSTGRES_DB:-inventory_ai}
     ports:
       - "8100:8100"
     depends_on:

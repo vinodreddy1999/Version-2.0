@@ -2,6 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: metam-fullstack
+  namespace: metam
 spec:
   replicas: 2
   selector:
@@ -12,9 +13,18 @@ spec:
       labels:
         app: metam-fullstack
     spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: metam-fullstack
           image: vinodreddy1999/metam-services-fullstack:0.2.1
+          imagePullPolicy: Always
           ports:
             - containerPort: 8080
           envFrom:
@@ -22,15 +32,38 @@ spec:
                 name: metam-config
             - secretRef:
                 name: metam-secrets
+          resources:
+            requests:
+              cpu: 250m
+              memory: 256Mi
+            limits:
+              cpu: 1000m
+              memory: 512Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          volumeMounts:
+            - name: data
+              mountPath: /data
+            - name: tmp
+              mountPath: /tmp
           readinessProbe:
             httpGet:
-              path: /ready
+              path: /health
               port: 8080
             initialDelaySeconds: 10
             periodSeconds: 15
           livenessProbe:
             httpGet:
-              path: /live
+              path: /health
               port: 8080
             initialDelaySeconds: 20
             periodSeconds: 20
+      volumes:
+        - name: data
+          emptyDir: {}
+        - name: tmp
+          emptyDir: {}
