@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import secrets
 from copy import deepcopy
 from datetime import datetime, timezone
 from uuid import uuid4
@@ -34,11 +35,15 @@ class DemoStore:
             }
         }
         self.users = {
+            # Nothing reads DemoStore.users for authentication today (the live
+            # /auth/login and /runtime/auth/login paths query the SQLAlchemy
+            # User model instead), but this password should never be a fixed,
+            # source-visible literal in case something starts relying on it.
             "admin@metam.local": {
                 "id": "user-admin-001",
                 "tenant_slug": "precision-components",
                 "name": "Metam Services Admin",
-                "password": "ChangeMe123!",
+                "password": secrets.token_urlsafe(16),
                 "permissions": ["platform.admin"],
             }
         }

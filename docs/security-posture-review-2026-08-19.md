@@ -13,7 +13,7 @@ This review maps the platform's current security posture against the enterprise 
 | Burp Suite Enterprise | Runtime DAST | Not provisioned. Ran a manual runtime probe against the live app (auth headers, CORS, error handling, and — critically — a live exploit attempt) — see [Runtime Testing](#runtime-testing-dast-style). |
 | Annual independent penetration test | Manual, adversarial, third-party | Cannot be replicated by an automated session — this requires a licensed firm and human testers. What's below is a best-effort automated/scripted pass, not a substitute. |
 
-**Bottom line up front:** one finding below is exploitable *today* against the running application and should be treated as the top priority — see [Critical Finding](#critical-finding-hardcoded-jwt-secrets--full-authentication-bypass).
+**Bottom line up front:** the critical finding below (hardcoded JWT secrets → full auth bypass) was proven exploitable against the running application and has since been fixed and re-verified the same day — see [Critical Finding](#critical-finding-hardcoded-jwt-secrets--full-authentication-bypass). All dependency vulnerabilities, Dockerfile/Kubernetes hardening gaps, and one more real credential issue found along the way have also been fixed — see [What Changed Today](#what-changed-today) for the full list, and [What Still Needs a Human Decision](#what-still-needs-a-human-decision) for what's left.
 
 ---
 
@@ -77,7 +77,9 @@ Documented in `.env.example` and wired into `docker-compose.yml` (`platform-api`
 
 ## Dependency Vulnerabilities
 
-### Backend (`pip-audit` against `requirements.txt`)
+**Status: fixed.** Both sides upgraded and re-verified; see [Fixes Applied — 2026-08-19 follow-up](#fixes-applied--2026-08-19-follow-up).
+
+### Backend (`pip-audit` against `requirements.txt`) — as found
 
 22 known vulnerabilities across 5 packages, all with fixes available except one:
 
@@ -89,7 +91,7 @@ Documented in `.env.example` and wired into `docker-compose.yml` (`platform-api`
 | `ecdsa` | 0.19.2 | 1 (Minerva timing side-channel on P-256) | No fix available — maintainers consider timing side-channels out of scope; consider whether `ecdsa` is a hard dependency or can be dropped |
 | `pytest` | 8.3.4 | 1 (predictable `/tmp/pytest-of-{user}` path, local privilege/DoS) | ≥9.0.3 — dev-only dependency, lower real-world priority |
 
-### Frontend (`npm audit`)
+### Frontend (`npm audit`) — as found
 
 7 vulnerabilities (6 high, 1 moderate), all with a fix available via `npm audit fix`:
 
@@ -103,19 +105,23 @@ Documented in `.env.example` and wired into `docker-compose.yml` (`platform-api`
 | `react-router` | High | Open redirect via backslash in `<Link>`/`useNavigate`; missing protocol validation in `RSCErrorHandler` (XSS) |
 | `react-router-dom` | Moderate | Inherited from `react-router` |
 
-**Recommendation:** run `npm audit fix` in `frontend/` (all fixes are available, no breaking major-version jumps reported); coordinate the backend `fastapi`/`starlette` upgrade as a single deliberate change and re-test.
-
 ---
 
 ## Static Analysis (SAST)
 
 ### Backend — `bandit`
 
-34 findings, all bandit-rated LOW, but two are more significant in context than the raw severity suggests:
+34 findings, all bandit-rated LOW, but some are more significant in context than the raw severity suggests:
 
-- **The 3 hardcoded JWT secrets** — see [Critical Finding](#critical-finding-hardcoded-jwt-secrets--full-authentication-bypass) above; bandit rates these LOW by default heuristic, but the live exploit proves real severity is Critical.
-- `app/store.py:41` — a default admin account (`admin@metam.local`) with a hardcoded plaintext password (`ChangeMe123!`) in source. Worth confirming this in-memory store isn't reachable in any real deployment path, and isn't left as a real default credential.
+- **The 5 hardcoded JWT secrets** — see [Critical Finding](#critical-finding-hardcoded-jwt-secrets--full-authentication-bypass) above; bandit rates these LOW by default heuristic, but the live exploit proves real severity is Critical. **Fixed.**
+- `app/store.py:41` — a default admin account (`admin@metam.local`) with a hardcoded plaintext password (`ChangeMe123!`) in source. Investigated: this in-memory `DemoStore.users` dict is never read by any live authentication path (confirmed by randomizing it and re-running the full test suite — all 81 tests still pass). **Fixed** — randomized regardless, since dead code today shouldn't stay one accidental wiring-away from being a real hardcoded credential.
 - The remaining ~29 findings are demo/seed data (customer portal seed users, integration credential *references* like `vault://cred-demo-erp` that are already correctly externalized) — reviewed individually, not real secrets.
+
+### Related finding, not caught by bandit: `platform_seed.py`'s demo account passwords
+
+While tracing whether `store.py`'s password was reachable, found the actual live equivalent: `app/platform_seed.py` seeds **~42 real database accounts** (12 base demo roles, plus 6 role templates × 5 seeded companies) with hardcoded, predictable passwords — e.g. `admin@metam.local` / `ChangeMe123!`. Proven live: `POST /auth/login` with that exact email/password returned a real `200` with a working admin session.
+
+**Decision: intentionally left as-is.** Unlike the JWT secrets, this isn't a boundary bypass — these are the platform's own documented demo accounts (`docs/passwordless-role-demo.md` describes real password login as a supported, intentional feature alongside the passwordless flow), the data behind them is entirely fictional, and 81 backend tests hardcode these exact credentials. Reviewed with the team and confirmed: keep as published, known demo credentials for a demo application. Revisit if this codebase is ever used as a base for a deployment handling real customer data — at that point these should follow the same env-var-with-random-fallback pattern used for the JWT secrets.
 
 ### Frontend — ESLint
 
@@ -129,27 +135,30 @@ Not run in this session — `semgrep`'s rule registry (`semgrep.dev`) is not rea
 
 ## Infrastructure-as-Code
 
-### `checkov` — Dockerfiles
+**Status: fixed** (Dockerfiles and Kubernetes manifests); compose secret finding still open — see below.
 
-182 passed, 6 failed across the 3 Dockerfiles (root, `frontend/`, `inventory-ai-service/`):
+### `checkov` — Dockerfiles — as found → after fix
 
-- None of the three set a `HEALTHCHECK`.
-- None of the three create/switch to a non-root `USER` — all three containers run as root by default.
+182 passed, 6 failed across the 3 Dockerfiles (root, `frontend/`, `inventory-ai-service/`): none set a `HEALTHCHECK`, none created/switched to a non-root `USER`.
 
-### `checkov` — Kubernetes manifests (`deploy/kubernetes/`)
+**Fixed:** all three now run as a dedicated non-root user (root and `inventory-ai-service` Dockerfiles use an explicit high UID `10001`; the frontend's nginx image uses its built-in unprivileged `nginx` user with its cache/pid directories re-owned accordingly) and declare a `HEALTHCHECK` against each service's `/health` endpoint. `checkov`: **225/225 passing** (up from 182/188).
 
-73 passed, 23 failed, concentrated in `deployment.yaml`:
+Also found and fixed a functional bug while here: `docker-compose.yml`'s healthchecks for `platform-api` and `fullstack-app` pointed at `/ready`, an endpoint that doesn't exist anywhere in the app (only `/health` does) — those healthchecks would have failed permanently in any real deployment. Repointed both to `/health`.
 
-- No CPU/memory requests or limits set.
-- No `securityContext` at pod or container level — containers can run as root, with privilege escalation not explicitly disabled, no seccomp profile, no read-only root filesystem.
-- Service account tokens are auto-mounted even though the deployment doesn't appear to need the Kubernetes API.
-- No `NetworkPolicy` restricting pod-to-pod traffic.
-- All manifests use the default namespace.
+### `checkov` — Kubernetes manifests (`deploy/kubernetes/`) — as found → after fix
+
+73 passed, 23 failed, concentrated in `deployment.yaml`: no resource requests/limits, no `securityContext` (root-capable, privilege escalation not disabled, no seccomp, no read-only rootfs), service account tokens auto-mounted unnecessarily, no `NetworkPolicy`, everything in the default namespace. The deployment's own `readinessProbe`/`livenessProbe` had the same `/ready`/`/live` bug as the compose healthchecks.
+
+**Fixed:** added a `metam` namespace (`namespace.yaml`) referenced by every manifest; CPU/memory requests and limits; a full pod+container `securityContext` (`runAsNonRoot`, UID/GID `10001`, `allowPrivilegeEscalation: false`, `readOnlyRootFilesystem: true` with `emptyDir` mounts for `/data` and `/tmp`, all capabilities dropped, `seccompProfile: RuntimeDefault`); `automountServiceAccountToken: false`; `imagePullPolicy: Always`; a baseline `NetworkPolicy` (`networkpolicy.yaml`) restricting ingress to the app's port and egress to DNS/Postgres/Redis/HTTPS; and repointed both probes to `/health`. `checkov`: **94/96 passing** (up from 73/96).
+
+The remaining 2 failures need infrastructure this session doesn't have access to, not more YAML: `CKV_K8S_43` (pin the image by digest) needs a real registry-pushed build to compute a digest against; `CKV_K8S_35` (secrets as mounted files instead of env vars) would need application-level changes to how the app reads its config, which isn't safe to do blind without a real cluster to validate against — flagging both for whoever owns the CI/CD pipeline and cluster.
+
+**Note:** the `NetworkPolicy` is a conservative starting point based on reading the manifests, not validated against a real cluster (no Kubernetes cluster available in this environment) — confirm it against your actual ingress controller and database topology before applying.
 
 ### Secrets in IaC/compose files
 
-- `deploy/kubernetes/secret.example.yaml` — filename correctly marks it as a template (`change-this-in-production` placeholder), not a real leaked secret. Low risk, but worth a comment/README pointer reminding whoever applies it to actually change the value.
-- `inventory-ai-service/docker-compose.yml:16` — **`POSTGRES_PASSWORD: inventory_ai`**, a real hardcoded weak credential (same as the username), not marked as a template. Unlike the root `docker-compose.yml` (which sources `POSTGRES_PASSWORD` from `.env`/`.env.example`), this service's compose file hardcodes a guessable password directly. Low risk if genuinely local-only, but the pattern is inconsistent with the rest of the repo and easy to accidentally carry into a shared environment.
+- `deploy/kubernetes/secret.example.yaml` — filename correctly marks it as a template (`change-this-in-production` placeholder), not a real leaked secret. Now also includes the 5 new JWT secret env vars for completeness. Low risk, but worth a README pointer reminding whoever applies it to actually change every value.
+- `inventory-ai-service/docker-compose.yml:16` — **`POSTGRES_PASSWORD: inventory_ai`**, a real hardcoded weak credential (same as the username), not marked as a template. Unlike the root `docker-compose.yml` (which sources `POSTGRES_PASSWORD` from `${POSTGRES_PASSWORD:-metam}`), this service's compose file hardcoded the value directly with no way to override it. **Fixed** — parameterized as `${INVENTORY_AI_POSTGRES_PASSWORD:-inventory_ai}` (and the matching user/db vars), matching the root compose file's exact convention: a simple default for zero-config local dev, overridable via env var for anything shared.
 
 ---
 
@@ -173,6 +182,14 @@ Tested against the live running app (`127.0.0.1:8000` backend, `127.0.0.1:5173` 
 - `.github/workflows/codeql.yml` — CodeQL analysis for Python and JavaScript/TypeScript, on push/PR to `main` and weekly.
 - `.github/dependabot.yml` — automated dependency update PRs for pip (root + `inventory-ai-service`), npm (`frontend`), GitHub Actions, and Docker base images across all three Dockerfiles.
 - **Fixed the critical hardcoded JWT secrets** (all five) — see [Fix Applied](#fix-applied) above. Verified the previously-working exploit is now blocked, with no regressions.
+- **Fixed `app/store.py`'s hardcoded password** (confirmed dead code; randomized anyway).
+- **Fixed all frontend dependency vulnerabilities** (`npm audit fix`, 7/7, zero regressions).
+- **Fixed all fixable backend dependency vulnerabilities** — coordinated `fastapi` 0.115.6→0.141.1 upgrade pulling in `starlette` 1.6.0, `python-jose` 3.5.0, `python-multipart` 0.0.32, `pytest` 9.1.1. `pip-audit` clean except `ecdsa` (no fix exists upstream). 81/81 backend tests pass; full 11-role live regression crawl clean.
+- **Hardened all 3 Dockerfiles** (non-root user, `HEALTHCHECK`) — checkov 182/188 → 225/225.
+- **Hardened the Kubernetes manifests** (namespace, resource limits, full `securityContext`, `NetworkPolicy`, disabled auto-mounted service account tokens) — checkov 73/96 → 94/96 (2 remaining need real registry/cluster access this session doesn't have).
+- **Fixed a real bug found along the way**: `docker-compose.yml` healthchecks and the Kubernetes deployment's readiness/liveness probes all pointed at `/ready`/`/live` endpoints that don't exist anywhere in the app — repointed to the real `/health` endpoint.
+- **Fixed `inventory-ai-service/docker-compose.yml`'s hardcoded DB password** — parameterized via env var, matching the root compose file's existing convention.
+- **Reviewed and intentionally left as-is**: `platform_seed.py`'s ~42 demo account passwords (see [Static Analysis](#related-finding-not-caught-by-bandit-platform_seedpys-demo-account-passwords) above) — a deliberate decision, not an oversight.
 
 ## What Still Needs a Human Decision
 
@@ -180,6 +197,8 @@ Tested against the live running app (`127.0.0.1:8000` backend, `127.0.0.1:5173` 
 2. Enable GitHub secret scanning in repo Settings (and confirm GHAS licensing if this repo is private).
 3. Decide on and provision the paid tools (Snyk Enterprise, SonarQube Enterprise, Orca Security, Burp Suite Enterprise) if the enterprise-tier coverage (contract scanning cadence, compliance reporting, vendor SLAs) is actually required for your customers/auditors, versus the open-source equivalents run today.
 4. Commission the annual independent penetration test — this is a vendor/scheduling decision, not something automatable.
-5. Run `npm audit fix` and plan the coordinated `fastapi`/`starlette` upgrade.
-6. Harden the Kubernetes deployment (resource limits, security context, non-root containers, NetworkPolicy) and add `USER`/`HEALTHCHECK` to the Dockerfiles.
-7. Confirm whether `app/store.py`'s hardcoded default admin password (`ChangeMe123!`) is reachable in any real deployment path — flagged but not yet fixed.
+5. Add a `Content-Security-Policy` header (flagged in [Runtime Testing](#runtime-testing-dast-style), not yet fixed).
+6. Consider gating or disabling `/docs`/`/openapi.json` outside dev environments (flagged, not yet fixed).
+7. Pin the Kubernetes deployment's image by digest and consider secrets-as-mounted-files once a real CI/CD pipeline and cluster are available to validate against.
+8. Validate the new `NetworkPolicy` against your actual cluster topology before applying — it was written by reading the manifests, not tested against a live cluster.
+9. If this codebase is ever extended to handle real customer data, revisit the `platform_seed.py` demo password decision above.
