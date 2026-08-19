@@ -1,3 +1,5 @@
+import logging
+import os
 import secrets
 import string
 from datetime import datetime, timedelta, timezone
@@ -7,7 +9,31 @@ from jose import jwt
 from passlib.context import CryptContext
 
 
-JWT_SECRET = "local-development-secret"
+logger = logging.getLogger(__name__)
+
+
+def resolve_jwt_secret(env_var: str, *, purpose: str) -> str:
+    """Read a JWT signing secret from the environment.
+
+    Never falls back to a fixed, source-visible literal: an attacker who reads
+    the repository could otherwise forge valid tokens for any user. If the
+    environment variable is unset, a random secret is generated for this
+    process instead, so tokens simply won't survive a restart until a real
+    secret is configured.
+    """
+    value = os.getenv(env_var)
+    if value:
+        return value
+    generated = secrets.token_urlsafe(32)
+    logger.warning(
+        "%s is not set; generated a random secret for %s. Sessions will not persist across "
+        "restarts. Set %s explicitly for any shared, staging, or production deployment.",
+        env_var, purpose, env_var,
+    )
+    return generated
+
+
+JWT_SECRET = resolve_jwt_secret("JWT_SECRET", purpose="the primary platform JWT")
 JWT_ALGORITHM = "HS256"
 pwd_context = CryptContext(schemes=["pbkdf2_sha256"], deprecated="auto")
 

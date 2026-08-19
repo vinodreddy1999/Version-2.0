@@ -43,6 +43,7 @@ from .platform_models import AppMetadata, FeatureFlag, ModuleRecord, User
 from .runtime_router import ensure_runtime_schema, router as runtime_router
 from .security import JWT_ALGORITHM as RUNTIME_JWT_ALGORITHM
 from .security import JWT_SECRET as RUNTIME_JWT_SECRET
+from .security import resolve_jwt_secret
 from .schemas import (
     ApiResult,
     ForecastRequest,
@@ -54,7 +55,7 @@ from .schemas import (
 )
 from .store import MODULES, store
 
-JWT_SECRET = "local-python-demo-secret"
+JWT_SECRET = resolve_jwt_secret("LEGACY_JWT_SECRET", purpose="the legacy /auth/login JWT")
 JWT_ALGORITHM = "HS256"
 
 app = FastAPI(

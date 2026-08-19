@@ -6,10 +6,11 @@ from uuid import uuid4
 
 from jose import jwt
 
+from ..security import resolve_jwt_secret
 from .customer_portal_repository import CustomerPortalRepository, customer_portal_repo
 from .sales_repository import sales_repo
 
-PORTAL_JWT_SECRET = "local-customer-portal-secret"
+PORTAL_JWT_SECRET = resolve_jwt_secret("PORTAL_JWT_SECRET", purpose="the customer portal JWT")
 PORTAL_JWT_ALGORITHM = "HS256"
 
 

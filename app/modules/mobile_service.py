@@ -6,9 +6,10 @@ from uuid import uuid4
 
 from jose import jwt
 
+from ..security import resolve_jwt_secret
 from .mobile_repository import MobileRepository, mobile_repo
 
-MOBILE_JWT_SECRET = "local-mobile-secret"
+MOBILE_JWT_SECRET = resolve_jwt_secret("MOBILE_JWT_SECRET", purpose="the mobile JWT")
 MOBILE_JWT_ALGORITHM = "HS256"
 
 

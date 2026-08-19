@@ -6,9 +6,10 @@ from uuid import uuid4
 
 from jose import jwt
 
+from ..security import resolve_jwt_secret
 from .supplier_portal_repository import SupplierPortalRepository, supplier_portal_repo
 
-SUPPLIER_PORTAL_JWT_SECRET = "local-supplier-portal-secret"
+SUPPLIER_PORTAL_JWT_SECRET = resolve_jwt_secret("SUPPLIER_PORTAL_JWT_SECRET", purpose="the supplier portal JWT")
 SUPPLIER_PORTAL_JWT_ALGORITHM = "HS256"
 
 

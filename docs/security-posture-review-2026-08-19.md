@@ -19,7 +19,7 @@ This review maps the platform's current security posture against the enterprise 
 
 ## Critical Finding: Hardcoded JWT Secrets → Full Authentication Bypass
 
-**Severity: Critical. Proven exploitable, not theoretical.**
+**Severity: Critical. Proven exploitable — fixed the same day, see [Fix Applied](#fix-applied) below.**
 
 Static analysis (`bandit`) found three independent, hardcoded JWT signing secrets checked into source control:
 
@@ -50,12 +50,28 @@ curl http://127.0.0.1:8000/runtime/auth/me -H "Authorization: Bearer <forged>"
 
 The server accepted the forged token as a fully authenticated `admin` session with write permissions and `demo_read_only: false` — bypassing both login and the read-only demo restriction entirely. Anyone who reads this repository's source (or brute-forces these short, guessable strings) can mint a valid admin session with no credentials.
 
-### Recommendation
+While investigating this, the same pattern was found in two more files bandit's `hardcoded_password_string` check didn't catch (it only flags variable names containing "password"/"pwd", not "secret"): `app/modules/mobile_service.py` (`MOBILE_JWT_SECRET = "local-mobile-secret"`) and `app/modules/supplier_portal_service.py` (`SUPPLIER_PORTAL_JWT_SECRET = "local-supplier-portal-secret"`) — five hardcoded JWT secrets total across the codebase.
 
-- Require `JWT_SECRET` (and `PORTAL_JWT_SECRET`) from an environment variable with no hardcoded fallback; fail fast at startup if unset in any non-local-dev mode.
-- Rotate the secret before any real deployment — every token signed under the current secret is forgeable.
-- Consolidate to a single JWT secret/signing path where reasonable; three independent secrets across the codebase is itself a maintenance/consistency risk.
-- This is a contained, mechanical fix. Flagging for an explicit decision before touching auth code — happy to implement on request.
+### Fix Applied
+
+Added `resolve_jwt_secret()` in `app/security.py`: reads the secret from an environment variable, and if unset, generates a random per-process secret (via `secrets.token_urlsafe(32)`) with a logged warning — never a fixed, source-visible literal. Applied to all five secrets:
+
+| File | Variable | Env var |
+|---|---|---|
+| `app/security.py` | `JWT_SECRET` | `JWT_SECRET` |
+| `app/main.py` | `JWT_SECRET` (legacy `/auth/login` path) | `LEGACY_JWT_SECRET` |
+| `app/modules/customer_portal_service.py` | `PORTAL_JWT_SECRET` | `PORTAL_JWT_SECRET` |
+| `app/modules/mobile_service.py` | `MOBILE_JWT_SECRET` | `MOBILE_JWT_SECRET` |
+| `app/modules/supplier_portal_service.py` | `SUPPLIER_PORTAL_JWT_SECRET` | `SUPPLIER_PORTAL_JWT_SECRET` |
+
+Documented in `.env.example` and wired into `docker-compose.yml` (`platform-api` and `fullstack-app` services) so a real deployment can set them explicitly.
+
+**Verified live**: restarted the running server with no `JWT_SECRET` set (so it fell back to a random per-process secret), re-sent the exact same forged token that previously returned `200` with a full admin session — it now returns `401 {"detail":"Invalid token"}`. Confirmed legitimate `demo-login` still issues working tokens. Full 11-role regression crawl afterward: zero failures, same baseline as before the fix.
+
+### Remaining recommendation
+
+- Set `JWT_SECRET`/`LEGACY_JWT_SECRET`/`PORTAL_JWT_SECRET`/`MOBILE_JWT_SECRET`/`SUPPLIER_PORTAL_JWT_SECRET` explicitly (e.g. via `secrets.token_urlsafe(32)`) for any shared, staging, or production deployment — the random per-process fallback means sessions won't survive restarts and won't agree across multiple instances until these are set.
+- Consider consolidating to fewer independent JWT signing paths where the separation isn't load-bearing; five parallel secrets is itself a maintenance/consistency risk, independent of how each is sourced.
 
 ---
 
@@ -156,12 +172,14 @@ Tested against the live running app (`127.0.0.1:8000` backend, `127.0.0.1:5173` 
 
 - `.github/workflows/codeql.yml` — CodeQL analysis for Python and JavaScript/TypeScript, on push/PR to `main` and weekly.
 - `.github/dependabot.yml` — automated dependency update PRs for pip (root + `inventory-ai-service`), npm (`frontend`), GitHub Actions, and Docker base images across all three Dockerfiles.
+- **Fixed the critical hardcoded JWT secrets** (all five) — see [Fix Applied](#fix-applied) above. Verified the previously-working exploit is now blocked, with no regressions.
 
 ## What Still Needs a Human Decision
 
-1. **Fix the hardcoded JWT secrets** (critical, contained fix — flagged, not yet applied).
+1. Set real values for `JWT_SECRET`/`LEGACY_JWT_SECRET`/`PORTAL_JWT_SECRET`/`MOBILE_JWT_SECRET`/`SUPPLIER_PORTAL_JWT_SECRET` in any shared, staging, or production environment.
 2. Enable GitHub secret scanning in repo Settings (and confirm GHAS licensing if this repo is private).
 3. Decide on and provision the paid tools (Snyk Enterprise, SonarQube Enterprise, Orca Security, Burp Suite Enterprise) if the enterprise-tier coverage (contract scanning cadence, compliance reporting, vendor SLAs) is actually required for your customers/auditors, versus the open-source equivalents run today.
 4. Commission the annual independent penetration test — this is a vendor/scheduling decision, not something automatable.
 5. Run `npm audit fix` and plan the coordinated `fastapi`/`starlette` upgrade.
 6. Harden the Kubernetes deployment (resource limits, security context, non-root containers, NetworkPolicy) and add `USER`/`HEALTHCHECK` to the Dockerfiles.
+7. Confirm whether `app/store.py`'s hardcoded default admin password (`ChangeMe123!`) is reachable in any real deployment path — flagged but not yet fixed.
