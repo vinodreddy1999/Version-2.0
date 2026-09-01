@@ -168,11 +168,11 @@ Tested against the live running app (`127.0.0.1:8000` backend, `127.0.0.1:5173` 
 
 | Check | Result |
 |---|---|
-| Security headers | Good: `x-content-type-options: nosniff`, `x-frame-options: DENY`, `referrer-policy: strict-origin-when-cross-origin`, `permissions-policy` set. **Missing: `Content-Security-Policy`** — no CSP header on any response. |
+| Security headers | Good: `x-content-type-options: nosniff`, `x-frame-options: DENY`, `referrer-policy: strict-origin-when-cross-origin`, `permissions-policy` set. `Content-Security-Policy` added in the [2026-09-01 follow-up](#follow-up--2026-09-01) below. |
 | CORS | Well-scoped: disallowed origins get no `Access-Control-Allow-Origin` echoed back (browser blocks); allowed dev origins work correctly. `access-control-allow-credentials: true` is paired with an explicit origin allowlist (not a wildcard), which is the correct pattern. |
 | Unauthenticated access to protected endpoint | Correctly rejected with a clean `401` and no information leakage. |
 | Malformed JSON body | Clean `422` with a structured Pydantic validation error, no stack trace or internal path disclosure. |
-| `/docs`, `/openapi.json` | Both publicly exposed (`200`), unauthenticated. Standard FastAPI default — not a vulnerability by itself, but hands an unauthenticated attacker a complete map of the API surface. Consider gating behind auth or disabling in non-dev environments. |
+| `/docs`, `/openapi.json` | Both publicly exposed (`200`), unauthenticated. Standard FastAPI default — not a vulnerability by itself, but hands an unauthenticated attacker a complete map of the API surface. Now gated behind `ENABLE_API_DOCS` — see the [2026-09-01 follow-up](#follow-up--2026-09-01) below. |
 | **Forged-JWT authentication bypass** | **Exploited successfully — see [Critical Finding](#critical-finding-hardcoded-jwt-secrets--full-authentication-bypass).** |
 
 ---
@@ -191,14 +191,24 @@ Tested against the live running app (`127.0.0.1:8000` backend, `127.0.0.1:5173` 
 - **Fixed `inventory-ai-service/docker-compose.yml`'s hardcoded DB password** — parameterized via env var, matching the root compose file's existing convention.
 - **Reviewed and intentionally left as-is**: `platform_seed.py`'s ~42 demo account passwords (see [Static Analysis](#related-finding-not-caught-by-bandit-platform_seedpys-demo-account-passwords) above) — a deliberate decision, not an oversight.
 
+## Follow-up — 2026-09-01
+
+Closed out the two items that were flagged but not yet fixed in the original review:
+
+- **`Content-Security-Policy` header added** (`app/enterprise.py`). Same-origin-only policy (`default-src 'self'`, `script-src 'self'`, `connect-src 'self'`, `frame-ancestors 'none'`, etc.) — safe because the frontend build has no inline `<script>` and no third-party origins (`frontend/index.html` loads a single same-origin module script). `style-src` allows `'unsafe-inline'` because a handful of components set React inline `style={{...}}`, which CSP treats the same as an inline `style` attribute; tightening that further would need auditing/removing those three files first. Exempted `/docs`, `/redoc`, `/openapi.json` from the CSP, since Swagger/ReDoc load their UI bundle from a CDN and run an inline init script — enforcing the same policy there would break the docs UI rather than protect anything.
+
+  **Scope note:** this header is set by the FastAPI app itself, so it only actually reaches the browser in the same-origin `fullstack-app` deployment (backend serves both the API and the built SPA). In the split `frontend` + `platform-api` deployment, the frontend is served by a separate nginx container (`frontend/nginx.conf`) that doesn't set this header, and that frontend calls the backend cross-origin (`VITE_API_BASE_URL`, e.g. `http://localhost:18000`) — a `connect-src 'self'` policy would break it if applied blindly there. Adding an equivalent CSP to `frontend/nginx.conf` needs the API origin baked in at container-start time (e.g. `envsubst` on the nginx config template), which wasn't done here since it's a deployment-topology decision, not a pure code fix. Flagged as a follow-up if the split-deployment mode is the one actually used in production.
+
+- **`/docs`, `/redoc`, `/openapi.json` are now gated behind `ENABLE_API_DOCS`** (`app/main.py`, defaults to `true` to preserve existing dev/demo behavior). Set `ENABLE_API_DOCS=false` in any production environment to return them as `404`. Wired into `.env.example` and both `platform-api`/`fullstack-app` services in `docker-compose.yml`. Verified live: with the flag unset, `/docs` returns `200` and CSP is correctly absent on it; with `ENABLE_API_DOCS=false`, all three routes return `404`. Full 81/81 backend test suite still passes.
+
 ## What Still Needs a Human Decision
 
 1. Set real values for `JWT_SECRET`/`LEGACY_JWT_SECRET`/`PORTAL_JWT_SECRET`/`MOBILE_JWT_SECRET`/`SUPPLIER_PORTAL_JWT_SECRET` in any shared, staging, or production environment.
 2. Enable GitHub secret scanning in repo Settings (and confirm GHAS licensing if this repo is private).
 3. Decide on and provision the paid tools (Snyk Enterprise, SonarQube Enterprise, Orca Security, Burp Suite Enterprise) if the enterprise-tier coverage (contract scanning cadence, compliance reporting, vendor SLAs) is actually required for your customers/auditors, versus the open-source equivalents run today.
 4. Commission the annual independent penetration test — this is a vendor/scheduling decision, not something automatable.
-5. Add a `Content-Security-Policy` header (flagged in [Runtime Testing](#runtime-testing-dast-style), not yet fixed).
-6. Consider gating or disabling `/docs`/`/openapi.json` outside dev environments (flagged, not yet fixed).
+5. Set `ENABLE_API_DOCS=false` for any production deployment (defaults to `true` today for backward compatibility).
+6. If the split `frontend`/`platform-api` deployment is used in production, add an equivalent `Content-Security-Policy` to `frontend/nginx.conf` with `connect-src` pointed at the real API origin (see Follow-up above) — not done here since it depends on your actual deployment topology.
 7. Pin the Kubernetes deployment's image by digest and consider secrets-as-mounted-files once a real CI/CD pipeline and cluster are available to validate against.
 8. Validate the new `NetworkPolicy` against your actual cluster topology before applying — it was written by reading the manifests, not tested against a live cluster.
 9. If this codebase is ever extended to handle real customer data, revisit the `platform_seed.py` demo password decision above.

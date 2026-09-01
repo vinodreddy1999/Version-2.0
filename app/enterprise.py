@@ -23,6 +23,17 @@ REQUEST_LATENCY_SECONDS = 0.0
 TRAFFIC_BY_PATH: dict[str, dict[str, Any]] = defaultdict(lambda: {"count": 0, "errors": 0, "latency_seconds": 0.0})
 RECENT_TRAFFIC: deque[dict[str, Any]] = deque(maxlen=100)
 
+# The app serves its own frontend build with no inline scripts/styles and no
+# third-party origins (see frontend/index.html), so a same-origin-only policy
+# is safe. Swagger/ReDoc (when enabled) load from a CDN and run an inline
+# init script, so those doc routes are exempt below rather than weakened globally.
+CONTENT_SECURITY_POLICY = (
+    "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; "
+    "img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self'; "
+    "frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
+)
+DOCS_PATHS = {"/docs", "/redoc", "/openapi.json"}
+
 
 def success_response(data: Any, message: str = "OK") -> dict[str, Any]:
     return {"success": True, "message": message, "data": data}
@@ -97,6 +108,8 @@ def configure_enterprise(app: FastAPI) -> None:
                     response.headers["x-frame-options"] = "DENY"
                     response.headers["referrer-policy"] = "strict-origin-when-cross-origin"
                     response.headers["permissions-policy"] = "camera=(), microphone=(), geolocation=()"
+                    if request.url.path not in DOCS_PATHS:
+                        response.headers["content-security-policy"] = CONTENT_SECURITY_POLICY
             except Exception:
                 pass
 

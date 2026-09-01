@@ -1,3 +1,4 @@
+import os
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
@@ -58,10 +59,18 @@ from .store import MODULES, store
 JWT_SECRET = resolve_jwt_secret("LEGACY_JWT_SECRET", purpose="the legacy /auth/login JWT")
 JWT_ALGORITHM = "HS256"
 
+# /docs, /redoc, and /openapi.json hand an unauthenticated caller a complete
+# map of the API surface. Enabled by default (matches prior behavior for
+# local/demo use); set ENABLE_API_DOCS=false in any production deployment.
+ENABLE_API_DOCS = os.getenv("ENABLE_API_DOCS", "true").strip().lower() not in {"false", "0", "no"}
+
 app = FastAPI(
     title="Metam Services - Python Backend",
     version="0.2.6",
     description="Python/FastAPI implementation of the Metam Services backend modules.",
+    docs_url="/docs" if ENABLE_API_DOCS else None,
+    redoc_url="/redoc" if ENABLE_API_DOCS else None,
+    openapi_url="/openapi.json" if ENABLE_API_DOCS else None,
 )
 configure_enterprise(app)
 
