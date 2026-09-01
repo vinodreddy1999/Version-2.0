@@ -421,6 +421,20 @@ deploy/kubernetes/
 deploy/helm/
 ```
 
+### Manual AWS deploy
+
+For a single EC2 instance running Docker Compose behind Caddy (automatic HTTPS, no load balancer):
+
+```bash
+# one-time, on a fresh Ubuntu 22.04 box
+APP_DOMAIN=app.metamservices.com ./deploy/aws/setup.sh
+
+# on every release
+./deploy/aws/deploy.sh
+```
+
+`setup.sh` installs Docker and Caddy, generates `.env` with fresh JWT/DB secrets if one doesn't exist yet, and wires up a Caddy reverse proxy for `APP_DOMAIN`. `deploy.sh` pulls, rebuilds, applies Alembic migrations, and health-checks the result. Both are idempotent — safe to re-run.
+
 ## Demo Login
 
 Use `POST /auth/login` with:
