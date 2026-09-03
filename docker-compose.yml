@@ -9,7 +9,7 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-metam}
       POSTGRES_DB: ${POSTGRES_DB:-metam_v2}
     ports:
-      - "${V2_POSTGRES_PORT:-55432}:5432"
+      - "${V2_POSTGRES_PORT:-5432}:5432"
     volumes:
       - metam_v2_postgres_data:/var/lib/postgresql/data
     networks:
@@ -96,7 +96,7 @@ services:
       MOBILE_JWT_SECRET: ${MOBILE_JWT_SECRET:-}
       SUPPLIER_PORTAL_JWT_SECRET: ${SUPPLIER_PORTAL_JWT_SECRET:-}
     ports:
-      - "${V2_APP_PORT:-18080}:8080"
+      - "${V2_APP_PORT:-8080}:8080"
     depends_on:
       postgres:
         condition: service_healthy
